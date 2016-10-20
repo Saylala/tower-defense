@@ -84,20 +84,13 @@ class Mesh:
         indices = [0, 1, 2, 1, 3, 2]
         return Mesh(vertices, indices, uvs)
 
-    # def get_line(x1, y1, x2, y2, z):
-
     @staticmethod
     def get_line(point1, point2, priority, width, height):
-        # -1 + (tower.col + bias) * self.cell_width,
-        # 1 - (tower.row + bias) * self.cell_height,
-        # -1 + (enemy.col + bias) * self.cell_width,
-        # 1 - (enemy.row + bias) * self.cell_height,
-        # 0.1)
         bias = 0.4
-        x1 = -1 + (point1.col + bias) * width
-        y1 = 1 - (point1.row + bias) * height
-        x2 = -1 + (point2.col + bias) * width
-        y2 = 1 - (point2.row + bias) * height
+        x11 = -1 + (point1.col + bias) * width
+        y11 = 1 - (point1.row + bias) * height
+        x21 = -1 + (point2.col + bias) * width
+        y21 = 1 - (point2.row + bias) * height
 
         bias = 0.6
         x12 = -1 + (point1.col + bias) * width
@@ -105,9 +98,9 @@ class Mesh:
         x22 = -1 + (point2.col + bias) * width
         y22 = 1 - (point2.row + bias) * height
 
-        vertices = [x1, y1, priority,
+        vertices = [x11, y11, priority,
                     x12, y12, priority,
-                    x2, y2, priority,
+                    x21, y21, priority,
                     x22, y22, priority]
         uvs = [1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]
         indices = [0, 1, 2, 1, 3, 2]

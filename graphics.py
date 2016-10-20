@@ -6,6 +6,7 @@ from PIL import Image
 import OpenGL.GL as gl
 import game
 import towers
+import consts
 import game_logic
 import creeps
 from shader import Shader
@@ -24,10 +25,16 @@ class MainWindow(QtWidgets.QWidget):
         self.setWindowTitle('Tower Defense')
         self.setWindowIcon(QtGui.QIcon('field/icon.png'))
 
-        self.widget = Graphics(self, screen.width(), screen.height())
+        self.game = game.Game()
+
+        self.widget = Graphics(
+            self, screen.width(), screen.height(), self.game)
 
         self.buttons = []
-        self.set_buttons(screen.width(), self.widget.game.field)
+        self.set_buttons(screen.width(), self.game.field)
+
+        self.labels = []
+        self.set_labels(screen.width(), self.game)
 
         self.showMaximized()
 
@@ -43,6 +50,17 @@ class MainWindow(QtWidgets.QWidget):
                 name, self, image_size, button_size, self.widget.choose_tower)
             button.move(button_size * i, 0)
             self.buttons.append(button)
+
+    def set_labels(self, width, state):
+        cell_size = width / len(state.field[0])
+        label_rate = 1.5
+        label_size = cell_size * label_rate
+        numbers = {'Gold': state.get_gold_number,
+                   'Enemies': state.get_remaining_enemies}
+        for i, name in enumerate(numbers):
+            label = Label(name, self, label_size, numbers[name])
+            label.move(label_size * (i + 3), 0)
+            self.labels.append(label_size)
 
 
 class Button(QtWidgets.QPushButton):
@@ -64,11 +82,42 @@ class Button(QtWidgets.QPushButton):
         self.func(Button._names[self.name])
 
 
-class Graphics(QtOpenGL.QGLWidget):
-    def __init__(self, parent, width, height):
+class Label(QtWidgets.QFrame):
+    def __init__(self, text, parent, label_size, get_number):
         super().__init__(parent)
-        self.game = game.Game()
+        self.setMaximumSize(label_size, label_size)
+        self.setMinimumSize(label_size, label_size)
 
+        self.text = text
+        self.label = QtWidgets.QLabel(
+            '{0}: {1}'.format(text, get_number()), self)
+        self.get_number = get_number
+
+        layout = QtWidgets.QHBoxLayout()
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+        self.setStyleSheet(
+            'QFrame { background-color: lightgrey;'
+            ' border: 1px solid black }')
+        self.label.setStyleSheet(
+            'QLabel { background-color : lightgrey;'
+            ' color : black; border: none}')
+
+        self.update_timer = QtCore.QTimer()
+        self.update_timer.timeout.connect(self.update)
+        update_time = math.ceil(100)
+        self.update_timer.start(update_time)
+
+    def update(self):
+        self.label.setText('{0}: {1}'.format(self.text, self.get_number()))
+
+
+class Graphics(QtOpenGL.QGLWidget):
+    def __init__(self, parent, width, height, state):
+        super().__init__(parent)
+        self.game = state
+        self.parent = parent
         self.screen_width = width
         self.screen_height = height
         self.cell_width = 0
@@ -79,6 +128,7 @@ class Graphics(QtOpenGL.QGLWidget):
         self.towers = []
         self.creeps = {}
         self.attacks = {}
+        self.healths = {}
 
         self.chosen_tower = None
 
@@ -119,6 +169,9 @@ class Graphics(QtOpenGL.QGLWidget):
         self.draw_timer.start(redraw_time)
 
     def paintGL(self):
+        if self.game.end:
+            return
+
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
         self.field_quad.draw(self.shader.handles)
@@ -128,6 +181,7 @@ class Graphics(QtOpenGL.QGLWidget):
 
         for creep in self.creeps:
             self.creeps[creep].draw(self.shader.handles)
+            self.healths[creep].draw(self.shader.handles)
 
         for attack in self.attacks:
             self.attacks[attack].draw(self.shader.handles)
@@ -154,7 +208,9 @@ class Graphics(QtOpenGL.QGLWidget):
         self.chosen_tower = tower_type
 
     def place_tower(self, row, col, tower_type):
-        self.game.place_unit(row, col, tower_type)
+        fail = self.game.place_unit(row, col, tower_type)
+        if fail:
+            return
         self.towers.append(self.get_unit(row, col, tower_type))
         self.attack(self.game.field[row][col])
 
@@ -210,12 +266,15 @@ class Graphics(QtOpenGL.QGLWidget):
             spawn_time = 15000
             QtCore.QTimer.singleShot(round(spawn_time / creep.speed), spawn)
 
+        if self.game.end:
+            return
+
         self.count = 0
         spawn()
 
     def move_creep(self, creep):
         self.creeps.pop(Point(creep.row, creep.col), None)
-        stop = creep.move(self.game.field)
+        stop = creep.move(self.game.field, self.game)
         bias = self.cell_height * 0.025
         row = creep.row
         col = creep.col
@@ -226,6 +285,14 @@ class Graphics(QtOpenGL.QGLWidget):
             -1 + (col + 1) * self.cell_width - bias,
             1 - (row + 1) * self.cell_height + bias,
             priority)
+        health = consts.MAX_HEALTH[type(creep).__name__]
+        rate = creep.health / health
+        self.healths[Point(row, col)] = Mesh.get_line(
+            Point(row+0.5, col-0.5),
+            Point(row+0.5, col+rate/2),
+            0.1,
+            self.cell_width,
+            self.cell_height)
         self.creeps[Point(row, col)].set_texture(
             Image.open('field/{}.png'.format(type(creep).__name__)))
         if stop is True:
@@ -249,5 +316,5 @@ class Graphics(QtOpenGL.QGLWidget):
             delete_time, lambda: self.attacks.pop(
                 Point(tower.row, tower.col), None))
         spawn_time = 5000
-        QtCore.QTimer.singleShot(round(spawn_time / tower.attack_speed),
+        QtCore.QTimer.singleShot(round(spawn_time / tower.speed),
                                  lambda: self.attack(tower))

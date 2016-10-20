@@ -1,27 +1,21 @@
 import collections
 import game_logic
 import creeps
+import consts
 
 Point = collections.namedtuple('Point', 'row, col')
 
 
 class Tower:
-    def __init__(self, row, col, damage, attack_range, attack_speed, price):
+    def __init__(self, row, col):
         self.row = row
         self.col = col
-        self.damage = damage
-        self.attack_range = attack_range
-        self.attack_speed = attack_speed
-        self.price = price
 
     def attack(self, state):
         enemies = [creeps.Peon, creeps.Grunt, creeps.Raider]
         field = state.field
-        for row in range(
-                        self.row-self.attack_range,
-                        self.row+self.attack_range+1):
-            for col in range(self.col-self.attack_range,
-                             self.col+self.attack_range+1):
+        for row in range(self.row-self.range, self.row+self.range+1):
+            for col in range(self.col-self.range, self.col+self.range+1):
                 if not game_logic.in_field(field, Point(row, col)):
                     continue
                 if type(field[row][col]) not in enemies:
@@ -32,14 +26,23 @@ class Tower:
 
 class ArcaneTower(Tower):
     def __init__(self, row, col):
-        super().__init__(row, col, 15, 3, 5, 10)
+        super().__init__(row, col)
+        name = 'ArcaneTower'
+        tower_consts = consts.UNITS['towers'][name]
+        self.damage, self.range, self.speed, self.price = tower_consts
 
 
 class GuardTower(Tower):
     def __init__(self, row, col):
-        super().__init__(row, col, 25, 2, 5, 15)
+        super().__init__(row, col)
+        name = 'GuardTower'
+        tower_consts = consts.UNITS['towers'][name]
+        self.damage, self.range, self.speed, self.price = tower_consts
 
 
 class CanonTower(Tower):
     def __init__(self, row, col):
-        super().__init__(row, col, 35, 1, 3, 20)
+        super().__init__(row, col)
+        name = 'CanonTower'
+        tower_consts = consts.UNITS['towers'][name]
+        self.damage, self.range, self.speed, self.price = tower_consts
