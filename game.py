@@ -19,6 +19,7 @@ class Game:
         self.portal = Point(10, 0)
         self.castle = Point(10, 39)
         self.end = False
+        self.gold = 100
         creeps.get_path(self.portal, self.castle, self.field)
 
     @staticmethod

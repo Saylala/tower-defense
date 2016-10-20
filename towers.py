@@ -6,16 +6,17 @@ Point = collections.namedtuple('Point', 'row, col')
 
 
 class Tower:
-    def __init__(self, row, col, damage, attack_range, attack_speed, attack_color):
+    def __init__(self, row, col, damage, attack_range, attack_speed, price):
         self.row = row
         self.col = col
         self.damage = damage
         self.attack_range = attack_range
         self.attack_speed = attack_speed
-        self.attack_color = attack_color
+        self.price = price
 
-    def attack(self, field):
+    def attack(self, state):
         enemies = [creeps.Peon, creeps.Grunt, creeps.Raider]
+        field = state.field
         for row in range(
                         self.row-self.attack_range,
                         self.row+self.attack_range+1):
@@ -25,20 +26,20 @@ class Tower:
                     continue
                 if not type(field[row][col]) in enemies:
                     continue
-                field[row][col].take_hit(self.damage)
+                field[row][col].take_hit(self.damage, state)
                 return field[row][col]
 
 
 class Arcane_Tower(Tower):
     def __init__(self, row, col):
-        super().__init__(row, col, 15, 3, 5, 'red')
+        super().__init__(row, col, 15, 3, 5, 10)
 
 
 class Guard_Tower(Tower):
     def __init__(self, row, col):
-        super().__init__(row, col, 25, 2, 5, 'brown')
+        super().__init__(row, col, 25, 2, 5, 15)
 
 
 class Canon_Tower(Tower):
     def __init__(self, row, col):
-        super().__init__(row, col, 35, 1, 3, 'black')
+        super().__init__(row, col, 35, 1, 3, 20)

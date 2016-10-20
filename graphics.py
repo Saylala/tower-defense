@@ -12,7 +12,6 @@ from PIL import Image
 from PyQt5 import QtOpenGL, QtGui, QtWidgets, QtCore
 
 Point = collections.namedtuple('Point', 'row, col')
-Line = collections.namedtuple('Line', 'x1, y1, x2, y2, color')
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -118,7 +117,7 @@ class Graphics(QtOpenGL.QGLWidget):
 
         self.draw_timer = QtCore.QTimer()
         self.draw_timer.timeout.connect(self.update)
-        redraw_time = math.floor(1000/60)
+        redraw_time = math.ceil(1000/60)
         self.draw_timer.start(redraw_time)
 
     def paintGL(self):
@@ -133,13 +132,7 @@ class Graphics(QtOpenGL.QGLWidget):
             self.creeps[creep].draw(self.shader.handles)
 
         for attack in self.attacks:
-            line = self.attacks[attack]
-            gl.glColor3f(*self.colors[line.color])
-            gl.glLineWidth(5)
-            gl.glBegin(gl.GL_LINES)
-            gl.glVertex2f(line.x1, line.y1)
-            gl.glVertex2f(line.x2, line.y2)
-            gl.glEnd()
+            self.attacks[attack].draw(self.shader.handles)
 
     def mousePressEvent(self, event):
         if not self.chosen_tower:
@@ -181,16 +174,18 @@ class Graphics(QtOpenGL.QGLWidget):
                     continue
                 image = images[self.game.field[row][col].type.name]
                 field.paste(image, (col * width, row * height))
-        self.field_quad = Mesh.get_quad(-1, 1, 1, -1, 0.9)
+        priority = 0.9
+        self.field_quad = Mesh.get_quad(-1, 1, 1, -1, priority)
         self.field_quad.set_texture(field)
 
     def get_unit(self, row, col, unit_type):
         bias = self.cell_height * 0.025
+        priority = 0.2
         quad = Mesh.get_quad(-1 + col * self.cell_width + bias,
                              1 - row * self.cell_height - bias,
                              -1 + (col + 1) * self.cell_width - bias,
                              1 - (row + 1) * self.cell_height + bias,
-                             0.1)
+                             priority)
         quad.set_texture(
             Image.open('field/{}.png'.format(unit_type.__name__)))
         return quad
@@ -224,12 +219,13 @@ class Graphics(QtOpenGL.QGLWidget):
         bias = self.cell_height * 0.025
         row = creep.row
         col = creep.col
+        priority = 0.2
         self.creeps[Point(row, col)] = Mesh.get_quad(
             -1 + col * self.cell_width + bias,
             1 - row * self.cell_height - bias,
             -1 + (col + 1) * self.cell_width - bias,
             1 - (row + 1) * self.cell_height + bias,
-            0.1)
+            priority)
         self.creeps[Point(row, col)].set_texture(
             Image.open('field/{}.png'.format(type(creep).__name__)))
         if stop is True:
@@ -240,17 +236,18 @@ class Graphics(QtOpenGL.QGLWidget):
                                  lambda: self.move_creep(creep))
 
     def attack(self, tower):
-        enemy = tower.attack(self.game.field)
-        bias = 0.5
+        enemy = tower.attack(self.game)
         if enemy:
-            attack = Line(-1 + (tower.col + bias) * self.cell_width,
-                          1 - (tower.row + bias) * self.cell_height,
-                          -1 + (enemy.col + bias) * self.cell_width,
-                          1 - (enemy.row+ bias) * self.cell_height,
-                          tower.attack_color)
+            attack = Mesh.get_line(tower,
+                                   enemy,
+                                   0.1,
+                                   self.cell_width,
+                                   self.cell_height)
             self.attacks[Point(tower.row, tower.col)] = attack
+        delete_time = 200
         QtCore.QTimer.singleShot(
-            200, lambda: self.attacks.pop(Point(tower.row, tower.col), None))
+            delete_time, lambda: self.attacks.pop(
+                Point(tower.row, tower.col), None))
         spawn_time = 5000
         QtCore.QTimer.singleShot(round(spawn_time / tower.attack_speed),
                                  lambda: self.attack(tower))

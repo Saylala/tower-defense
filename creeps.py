@@ -1,12 +1,9 @@
 import collections
 import copy
 import game
+import game_logic
 
 Point = collections.namedtuple('Point', 'row, col')
-
-
-def in_field(field, point):
-    return 0 <= point.row < len(field) and 0 <= point.col < len(field[0])
 
 
 def find_path(start_point, end_point, field):
@@ -20,7 +17,7 @@ def find_path(start_point, end_point, field):
         temp_field[point.row][point.col] = True
         for delta in deltas:
             new_point = Point(point.row + delta.row, point.col + delta.col)
-            if (not in_field(temp_field, new_point) or
+            if (not game_logic.in_field(temp_field, new_point) or
                     temp_field[new_point.row][new_point.col] is True or
                     temp_field[new_point.row][new_point.col].type == game.Type.Grass and
                     new_point != start_point):
@@ -45,7 +42,7 @@ _path = []
 
 
 class Creep:
-    def __init__(self, row, col, health, speed):
+    def __init__(self, row, col, health, speed, reward):
         self.row = row
         self.col = col
         self.health = 0
@@ -53,6 +50,7 @@ class Creep:
         self.dead = False
         self.health = health
         self.speed = speed
+        self.reward = reward
 
     def move(self, field):
         global _path
@@ -66,22 +64,23 @@ class Creep:
         self.row = next_cell.row
         self.col = next_cell.col
 
-    def take_hit(self, damage):
+    def take_hit(self, damage, state):
         self.health -= damage
         if self.health <= 0:
             self.dead = True
+            state.gold += self.reward
 
 
 class Peon(Creep):
     def __init__(self, row, col):
-        super().__init__(row, col, 50, 20)
+        super().__init__(row, col, 50, 20, 10)
 
 
 class Grunt(Creep):
     def __init__(self, row, col):
-        super().__init__(row, col, 100, 15)
+        super().__init__(row, col, 100, 15, 15)
 
 
 class Raider(Creep):
     def __init__(self, row, col):
-        super().__init__(row, col, 80, 25)
+        super().__init__(row, col, 80, 25, 20)
