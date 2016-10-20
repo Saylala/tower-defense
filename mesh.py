@@ -6,9 +6,12 @@ import OpenGL.GL as gl
 
 class Mesh:
     def __init__(self, vertices, indices, uvs):
-        self._vertex_buffer = self.create_buffer(vertices, 3, 'f', gl.GL_ARRAY_BUFFER)
-        self._uv_buffer = self.create_buffer(uvs, 2, 'f', gl.GL_ARRAY_BUFFER)
-        self._index_buffer = self.create_buffer(indices, 1, 'H', gl.GL_ELEMENT_ARRAY_BUFFER)
+        self._vertex_buffer = self.create_buffer(
+            vertices, 3, 'f', gl.GL_ARRAY_BUFFER)
+        self._uv_buffer = self.create_buffer(
+            uvs, 2, 'f', gl.GL_ARRAY_BUFFER)
+        self._index_buffer = self.create_buffer(
+            indices, 1, 'H', gl.GL_ELEMENT_ARRAY_BUFFER)
 
         self._texture_id = -1
 
@@ -18,10 +21,14 @@ class Mesh:
         self._texture_id = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self._texture_id)
 
-        gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-        gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-        gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP)
-        gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP)
+        gl.glTexParameterf(
+            gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+        gl.glTexParameterf(
+            gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+        gl.glTexParameterf(
+            gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP)
+        gl.glTexParameterf(
+            gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP)
 
         gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, 3,
                         img.size[0], img.size[1], 0,
@@ -34,7 +41,9 @@ class Mesh:
             result['count'] = len(arr)//stride
             result['id'] = gl.glGenBuffers(1)
             gl.glBindBuffer(buffer_type, result['id'])
-            gl.glBufferData(buffer_type, array(array_type, arr).tobytes(), gl.GL_STATIC_DRAW)
+            gl.glBufferData(buffer_type,
+                            array(array_type, arr).tobytes(),
+                            gl.GL_STATIC_DRAW)
         return result
 
     def draw(self, handles):
@@ -42,13 +51,17 @@ class Mesh:
             if self._vertex_buffer['count'] != 0:
                 gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._vertex_buffer['id'])
                 gl.glEnableVertexAttribArray(handles["aVertexPosition"])
-                gl.glVertexAttribPointer(handles["aVertexPosition"], 3, gl.GL_FLOAT, False, 0, ctypes.c_void_p(0))
+                gl.glVertexAttribPointer(handles["aVertexPosition"], 3,
+                                         gl.GL_FLOAT, False,
+                                         0, ctypes.c_void_p(0))
 
         if handles["aVertexTexCoord"] != -1:
             if self._uv_buffer['count'] != 0:
                 gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._uv_buffer['id'])
                 gl.glEnableVertexAttribArray(handles["aVertexTexCoord"])
-                gl.glVertexAttribPointer(handles["aVertexTexCoord"], 2, gl.GL_FLOAT, False, 0, ctypes.c_void_p(0))
+                gl.glVertexAttribPointer(handles["aVertexTexCoord"], 2,
+                                         gl.GL_FLOAT, False,
+                                         0, ctypes.c_void_p(0))
 
         if handles["uTexture"] != -1:
             gl.glActiveTexture(gl.GL_TEXTURE0)
@@ -56,7 +69,8 @@ class Mesh:
             gl.glUniform1i(handles["uTexture"], 0)
 
         gl.glBindBuffer(gl.GL_ELEMENT_ARRAY_BUFFER, self._index_buffer['id'])
-        gl.glDrawElements(gl.GL_TRIANGLES, self._index_buffer['count'], gl.GL_UNSIGNED_SHORT, ctypes.c_void_p(0))
+        gl.glDrawElements(gl.GL_TRIANGLES, self._index_buffer['count'],
+                          gl.GL_UNSIGNED_SHORT, ctypes.c_void_p(0))
 
         gl.glDisableVertexAttribArray(handles["aVertexPosition"])
 

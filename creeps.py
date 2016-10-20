@@ -1,9 +1,9 @@
 import collections
 import copy
-import game
 import game_logic
 
 Point = collections.namedtuple('Point', 'row, col')
+Map = collections.namedtuple('Map', 'row, col, type')
 
 
 def find_path(start_point, end_point, field):
@@ -12,6 +12,7 @@ def find_path(start_point, end_point, field):
     deltas = [Point(0, 1), Point(1, 0), Point(-1, 0)]
     track = {start_point: None}
     temp_field = copy.deepcopy(field)
+    grass = game_logic.Type.Grass
     while len(points) != 0:
         point = points.popleft()
         temp_field[point.row][point.col] = True
@@ -19,7 +20,7 @@ def find_path(start_point, end_point, field):
             new_point = Point(point.row + delta.row, point.col + delta.col)
             if (not game_logic.in_field(temp_field, new_point) or
                     temp_field[new_point.row][new_point.col] is True or
-                    temp_field[new_point.row][new_point.col].type == game.Type.Grass and
+                    temp_field[new_point.row][new_point.col].type == grass and
                     new_point != start_point):
                 continue
             points.append(new_point)
@@ -34,11 +35,11 @@ def find_path(start_point, end_point, field):
 
 
 def get_path(start_point, end_point, field):
-    global _path
-    _path = find_path(start_point, end_point, field)
+    global PATH
+    PATH = find_path(start_point, end_point, field)
 
 
-_path = []
+PATH = []
 
 
 class Creep:
@@ -53,14 +54,16 @@ class Creep:
         self.reward = reward
 
     def move(self, field):
-        global _path
+        global PATH
         self._id += 1
-        if self._id == len(_path) - 1 or self.dead:
-            field[self.row][self.col] = game.Map(self.row, self.col, game.Type.Path)
+        if self._id == len(PATH) - 1 or self.dead:
+            field[self.row][self.col] = Map(
+                self.row, self.col, game_logic.Type.Path)
             return True
-        next_cell = _path[self._id]
+        next_cell = PATH[self._id]
         field[next_cell.row][next_cell.col] = self
-        field[self.row][self.col] = game.Map(self.row, self.col, game.Type.Path)
+        field[self.row][self.col] = Map(
+            self.row, self.col, game_logic.Type.Path)
         self.row = next_cell.row
         self.col = next_cell.col
 

@@ -24,22 +24,22 @@ class Tower:
                              self.col+self.attack_range+1):
                 if not game_logic.in_field(field, Point(row, col)):
                     continue
-                if not type(field[row][col]) in enemies:
+                if type(field[row][col]) not in enemies:
                     continue
                 field[row][col].take_hit(self.damage, state)
                 return field[row][col]
 
 
-class Arcane_Tower(Tower):
+class ArcaneTower(Tower):
     def __init__(self, row, col):
         super().__init__(row, col, 15, 3, 5, 10)
 
 
-class Guard_Tower(Tower):
+class GuardTower(Tower):
     def __init__(self, row, col):
         super().__init__(row, col, 25, 2, 5, 15)
 
 
-class Canon_Tower(Tower):
+class CanonTower(Tower):
     def __init__(self, row, col):
         super().__init__(row, col, 35, 1, 3, 20)

@@ -1,15 +1,16 @@
-import OpenGL.GL as gl
 import math
-import game
 import collections
+import random
+from PyQt5 import QtOpenGL, QtGui, QtWidgets, QtCore
+from PIL import Image
+import OpenGL.GL as gl
+import game
 import towers
 import game_logic
 import creeps
-import random
 from shader import Shader
 from mesh import Mesh
-from PIL import Image
-from PyQt5 import QtOpenGL, QtGui, QtWidgets, QtCore
+
 
 Point = collections.namedtuple('Point', 'row, col')
 
@@ -32,21 +33,22 @@ class MainWindow(QtWidgets.QWidget):
 
     def set_buttons(self, width, field):
         cell_size = width / len(field[0])
-        names = ['Arcane_Tower', 'Canon_Tower', 'Guard_Tower']
+        names = ['ArcaneTower', 'CanonTower', 'GuardTower']
         button_rate = 1.5
         button_size = cell_size * button_rate
         image_rate = 1.125
         image_size = cell_size * image_rate
         for i, name in enumerate(names):
-            button = Button(name, self, image_size, button_size, self.widget.choose_tower)
+            button = Button(
+                name, self, image_size, button_size, self.widget.choose_tower)
             button.move(button_size * i, 0)
             self.buttons.append(button)
 
 
 class Button(QtWidgets.QPushButton):
-    _names = {'Arcane_Tower': towers.Arcane_Tower,
-              'Canon_Tower': towers.Canon_Tower,
-              'Guard_Tower': towers.Guard_Tower}
+    _names = {'ArcaneTower': towers.ArcaneTower,
+              'CanonTower': towers.CanonTower,
+              'GuardTower': towers.GuardTower}
 
     def __init__(self, name, parent, image_size, button_size, func):
         super().__init__('', parent)
@@ -72,10 +74,6 @@ class Graphics(QtOpenGL.QGLWidget):
         self.cell_width = 0
         self.cell_height = 0
         self.shader = None
-
-        self.colors = {'red': (1.0, 0.0, 0.0),
-                       'black': (0.0, 0.0, 0.0),
-                       'brown': (1.0, 1.0, 1.0)}
 
         self.field_quad = None
         self.towers = []
@@ -138,14 +136,16 @@ class Graphics(QtOpenGL.QGLWidget):
         if not self.chosen_tower:
             return
         if event.buttons() == QtCore.Qt.LeftButton:
-            cell_width = math.floor(self.screen_width / len(self.game.field[0]))
-            cell_height = math.floor(self.screen_height / len(self.game.field))
+            cell_width = math.floor(
+                self.screen_width / len(self.game.field[0]))
+            cell_height = math.floor(
+                self.screen_height / len(self.game.field))
             row = math.floor(event.globalY() / cell_height)
             col = math.floor(event.globalX() / cell_width)
             if not game_logic.in_field(self.game.field, Point(row, col)):
                 return
             if (not isinstance(self.game.field[row][col], game.Map) or
-                    self.game.field[row][col].type != game.Type.Grass):
+                    self.game.field[row][col].type != game_logic.Type.Grass):
                 return
             self.place_tower(row, col, self.chosen_tower)
             self.chosen_tower = None

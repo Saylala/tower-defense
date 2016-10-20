@@ -1,16 +1,9 @@
 import collections
-from enum import Enum
 import creeps
+import game_logic
 
 Map = collections.namedtuple('Map', 'row, col, type')
 Point = collections.namedtuple('Point', 'row, col')
-
-
-class Type(Enum):
-    Grass = 1
-    Path = 2
-    Portal = 3
-    Castle = 4
 
 
 class Game:
@@ -24,7 +17,7 @@ class Game:
 
     @staticmethod
     def get_field():
-        field = [[Map(0, 0, Type.Grass)] * 40 for f in range(21)]
+        field = [[Map(0, 0, game_logic.Type.Grass)] * 40 for f in range(21)]
         string_field = ["GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
                         "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
                         "GGGGGGGGG       GGGGGGGGGGGGGGGGGGGGGGGG",
@@ -46,13 +39,13 @@ class Game:
                         "GGG       GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
                         "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
                         "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"]
-        types = {'G': Type.Grass,
-                 ' ': Type.Path,
-                 'P': Type.Portal,
-                 'C': Type.Castle}
-        for row in range(len(string_field)):
-            for col in range(len(string_field[0])):
-                field[row][col] = Map(row, col, types[string_field[row][col]])
+        types = {'G': game_logic.Type.Grass,
+                 ' ': game_logic.Type.Path,
+                 'P': game_logic.Type.Portal,
+                 'C': game_logic.Type.Castle}
+        for row, str_field in enumerate(string_field):
+            for col, element in enumerate(str_field):
+                field[row][col] = Map(row, col, types[element])
         return field
 
     def place_unit(self, row, col, unit_type):
