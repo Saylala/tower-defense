@@ -1,3 +1,4 @@
+import math
 import ctypes
 from array import array
 
@@ -52,7 +53,7 @@ class Mesh:
                 gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._vertex_buffer['id'])
                 gl.glEnableVertexAttribArray(handles["aVertexPosition"])
                 gl.glVertexAttribPointer(handles["aVertexPosition"], 3,
-                                         gl.GL_FLOAT, False,
+                                         gl.GL_FLOAT, gl.GL_FALSE,
                                          0, ctypes.c_void_p(0))
 
         if handles["aVertexTexCoord"] != -1:
@@ -60,7 +61,7 @@ class Mesh:
                 gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._uv_buffer['id'])
                 gl.glEnableVertexAttribArray(handles["aVertexTexCoord"])
                 gl.glVertexAttribPointer(handles["aVertexTexCoord"], 2,
-                                         gl.GL_FLOAT, False,
+                                         gl.GL_FLOAT, gl.GL_FALSE,
                                          0, ctypes.c_void_p(0))
 
         if handles["uTexture"] != -1:
@@ -92,16 +93,24 @@ class Mesh:
         x21 = -1 + (point2.col + bias) * width
         y21 = 1 - (point2.row + bias) * height
 
-        bias = 0.6
-        x12 = -1 + (point1.col + bias) * width
-        y12 = 1 - (point1.row + bias) * height
-        x22 = -1 + (point2.col + bias) * width
-        y22 = 1 - (point2.row + bias) * height
+        angle = math.atan(math.tan(math.fabs(y11-y21)/math.fabs(x11-y21)))
+        new_point1 = Mesh.turn(x11, y11, angle)
+        new_point1 = Mesh.turn(
+            new_point1[0], new_point1[1] - 0.1 * width, -angle)
+        new_point2 = Mesh.turn(x21, y21, angle)
+        new_point2 = Mesh.turn(
+            new_point2[0], new_point2[1] - 0.1 * width, -angle)
 
         vertices = [x11, y11, priority,
-                    x12, y12, priority,
+                    *new_point1, priority,
                     x21, y21, priority,
-                    x22, y22, priority]
+                    *new_point2, priority]
         uvs = [1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]
         indices = [0, 1, 2, 1, 3, 2]
         return Mesh(vertices, indices, uvs)
+
+    @staticmethod
+    def turn(x1, x2, angle):
+        new_x1 = x1*math.cos(angle) - x2*math.sin(angle)
+        new_x2 = x1*math.sin(angle) + x2*math.cos(angle)
+        return new_x1, new_x2

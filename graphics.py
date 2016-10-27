@@ -53,14 +53,17 @@ class MainWindow(QtWidgets.QWidget):
 
     def set_labels(self, width, state):
         cell_size = width / len(state.field[0])
-        label_rate = 1.5
-        label_size = cell_size * label_rate
+        width_rate = 3
+        width = cell_size * width_rate
+        height_rate = 1.5
+        height = cell_size * height_rate
+        bias = 3 * height
         numbers = {'Gold': state.get_gold_number,
                    'Enemies': state.get_remaining_enemies}
         for i, name in enumerate(numbers):
-            label = Label(name, self, label_size, numbers[name])
-            label.move(label_size * (i + 3), 0)
-            self.labels.append(label_size)
+            label = Label(name, self, width, height, numbers[name])
+            label.move(width * i + bias, 0)
+            self.labels.append(label)
 
 
 class Button(QtWidgets.QPushButton):
@@ -83,15 +86,16 @@ class Button(QtWidgets.QPushButton):
 
 
 class Label(QtWidgets.QFrame):
-    def __init__(self, text, parent, label_size, get_number):
+    def __init__(self, text, parent, width, height, get_number):
         super().__init__(parent)
-        self.setMaximumSize(label_size, label_size)
-        self.setMinimumSize(label_size, label_size)
+        self.setMaximumSize(width, height)
+        self.setMinimumSize(width, height)
 
         self.text = text
         self.label = QtWidgets.QLabel(
             '{0}: {1}'.format(text, get_number()), self)
         self.get_number = get_number
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
 
         layout = QtWidgets.QHBoxLayout()
         layout.addWidget(self.label)
@@ -167,6 +171,21 @@ class Graphics(QtOpenGL.QGLWidget):
         self.draw_timer.timeout.connect(self.update)
         redraw_time = math.ceil(1000/60)
         self.draw_timer.start(redraw_time)
+        # self.test()
+
+    # def test(self):
+    #     start = Point(10, 21)
+    #     points = []
+    #     for i in range(10):
+    #         for j in range(10):
+    #             points.append(Point(start.row - 5 + i, start.col - 5 + j))
+    #     for i, point in enumerate(points):
+    #         self.attacks[points[i]] = Mesh.get_line(
+    #             start,
+    #             points[i],
+    #             0.1,
+    #             self.cell_width,
+    #             self.cell_height)
 
     def paintGL(self):
         if self.game.end:
@@ -288,9 +307,9 @@ class Graphics(QtOpenGL.QGLWidget):
         health = consts.MAX_HEALTH[type(creep).__name__]
         rate = creep.health / health
         self.healths[Point(row, col)] = Mesh.get_line(
-            Point(row+0.5, col-0.5),
-            Point(row+0.5, col+rate/2),
-            0.1,
+            Point(row+0.6, col-0.4),
+            Point(row+0.6, col-0.4+rate),
+            0.15,
             self.cell_width,
             self.cell_height)
         self.creeps[Point(row, col)].set_texture(
@@ -305,8 +324,10 @@ class Graphics(QtOpenGL.QGLWidget):
     def attack(self, tower):
         enemy = tower.attack(self.game)
         if enemy:
-            attack = Mesh.get_line(tower,
-                                   enemy,
+            point1 = tower if tower.col < enemy.col else enemy
+            point2 = tower if tower.col > enemy.col else enemy
+            attack = Mesh.get_line(point1,
+                                   point2,
                                    0.1,
                                    self.cell_width,
                                    self.cell_height)
