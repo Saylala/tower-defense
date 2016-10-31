@@ -1,18 +1,18 @@
 import math
 import ctypes
 from array import array
-
+import consts
 import OpenGL.GL as gl
 
 
 class Mesh:
-    def __init__(self, vertices, indices, uvs):
+    def __init__(self, vertices):
         self._vertex_buffer = self.create_buffer(
             vertices, 3, 'f', gl.GL_ARRAY_BUFFER)
         self._uv_buffer = self.create_buffer(
-            uvs, 2, 'f', gl.GL_ARRAY_BUFFER)
+            consts.UVS, 2, 'f', gl.GL_ARRAY_BUFFER)
         self._index_buffer = self.create_buffer(
-            indices, 1, 'H', gl.GL_ELEMENT_ARRAY_BUFFER)
+            consts.INDICES, 1, 'H', gl.GL_ELEMENT_ARRAY_BUFFER)
 
         self._texture_id = -1
 
@@ -81,9 +81,7 @@ class Mesh:
                     x1, y2, z,
                     x2, y1, z,
                     x1, y1, z]
-        uvs = [1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]
-        indices = [0, 1, 2, 1, 3, 2]
-        return Mesh(vertices, indices, uvs)
+        return Mesh(vertices)
 
     @staticmethod
     def get_line(point1, point2, priority, width, height):
@@ -105,9 +103,7 @@ class Mesh:
                     *new_point1, priority,
                     x21, y21, priority,
                     *new_point2, priority]
-        uvs = [1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]
-        indices = [0, 1, 2, 1, 3, 2]
-        return Mesh(vertices, indices, uvs)
+        return Mesh(vertices)
 
     @staticmethod
     def turn(x1, x2, angle):

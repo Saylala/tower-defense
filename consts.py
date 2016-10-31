@@ -18,6 +18,7 @@ MAX_HEALTH = {'Peon': 50,
               'Grunt': 100,
               'Raider': 80}
 
+TITLE = 'Tower Defense'
 START_GOLD = 100
 ENEMIES_ALLOWED = 5
 PORTAL = Point(10, 0)
@@ -44,3 +45,16 @@ DEFAULT_MAP = ["GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
                "GGG       GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
                "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
                "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"]
+
+TOWERS_NAMES = ['ArcaneTower', 'CanonTower', 'GuardTower']
+MAGIC_NAMES = ['LightningMagic', 'SwordMagic']
+CONTROL_NAMES = ['Restart', 'Play', 'Pause', 'Slower', 'Faster']
+
+LABEL_NAMES = ['Gold', 'Enemies']
+
+TEXTURES_FOLDER = 'field'
+ICON_PATH = '{}/icon.png'.format(TEXTURES_FOLDER)
+
+UVS = [1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]
+INDICES = [0, 1, 2, 1, 2, 3]
+

@@ -11,9 +11,12 @@ class Shader:
 
     @staticmethod
     def get_shader(src, shader_type):
-        with open(src) as file:
-            src_text = file.read()
-        return sh.compileShader(src_text, shader_type)
+        try:
+            with open(src) as file:
+                src_text = file.read()
+            return sh.compileShader(src_text, shader_type)
+        except Exception as exception:
+            print('Cannot open file {0}'.format(src))
 
     def get_id(self):
         return self._id

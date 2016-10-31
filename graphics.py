@@ -12,7 +12,6 @@ import creeps
 from shader import Shader
 from mesh import Mesh
 
-
 Point = collections.namedtuple('Point', 'row, col')
 
 
@@ -22,79 +21,112 @@ class MainWindow(QtWidgets.QWidget):
         self.setMinimumSize(screen.width(), screen.height())
         self.setMaximumSize(screen.width(), screen.height())
 
-        self.setWindowTitle('Tower Defense')
-        self.setWindowIcon(QtGui.QIcon('field/icon.png'))
+        self.setWindowTitle(consts.TITLE)
+        self.setWindowIcon(QtGui.QIcon(consts.ICON_PATH))
 
         self.game = game.Game()
 
         self.widget = Graphics(
             self, screen.width(), screen.height(), self.game)
 
-        self.buttons = []
-        self.set_buttons(screen.width(), self.game.field)
+        cell_size = screen.width() / len(self.game.field[0])
 
         self.labels = []
-        self.set_labels(screen.width(), self.game)
+        button_bias = self.set_elements(
+            cell_size, 0, consts.LABEL_NAMES, Label, self.labels)
+
+        self.tower_buttons = []
+        self.magic_buttons = []
+        self.control_buttons = []
+        self.set_all_buttons(cell_size, button_bias)
 
         self.showMaximized()
 
-    def set_buttons(self, width, field):
-        cell_size = width / len(field[0])
-        names = ['ArcaneTower', 'CanonTower', 'GuardTower']
-        button_rate = 1.5
-        button_size = cell_size * button_rate
-        image_rate = 1.125
-        image_size = cell_size * image_rate
-        for i, name in enumerate(names):
-            button = Button(
-                name, self, image_size, button_size, self.widget.choose_tower)
-            button.move(button_size * i, 0)
-            self.buttons.append(button)
+    def set_all_buttons(self, cell_size, x_bias):
+        bias = self.set_elements(cell_size, x_bias, consts.TOWERS_NAMES,
+                                 Tower_Button, self.tower_buttons)
+        bias = self.set_elements(cell_size, bias, consts.MAGIC_NAMES,
+                                 Magic_Button, self.magic_buttons)
+        return self.set_elements(cell_size, bias, consts.CONTROL_NAMES,
+                                 Control_Button, self.control_buttons)
 
-    def set_labels(self, width, state):
-        cell_size = width / len(state.field[0])
-        width_rate = 3
-        width = cell_size * width_rate
-        height_rate = 1.5
-        height = cell_size * height_rate
-        bias = 3 * height
-        numbers = {'Gold': state.get_gold_number,
-                   'Enemies': state.get_remaining_enemies}
-        for i, name in enumerate(numbers):
-            label = Label(name, self, width, height, numbers[name])
-            label.move(width * i + bias, 0)
-            self.labels.append(label)
+    def set_elements(self, cell_size, x_bias, names, element_type, elements):
+        button_width = 0
+        for i, name in enumerate(names):
+            button = element_type(name, self, cell_size)
+            button_width = button.size().width()
+            button.move(button_width * i + x_bias, 0)
+            elements.append(button)
+        return button_width * len(elements) + x_bias
 
 
 class Button(QtWidgets.QPushButton):
+    def __init__(self, name, parent, cell_size):
+        super().__init__('', parent)
+        self.name = name
+        self.parent = parent
+
+        image_ratio = 1.125
+        button_ratio = 1.5
+        image_size = cell_size * image_ratio
+        button_size = cell_size * button_ratio
+        self.setMaximumSize(button_size, button_size)
+        self.setMinimumSize(button_size, button_size)
+
+        self.setIcon(QtGui.QIcon('{0}/{1}.png'.format(
+            consts.TEXTURES_FOLDER, name)))
+        self.setIconSize(QtCore.QSize(image_size, image_size))
+
+        self.clicked.connect(self.react)
+
+
+class Tower_Button(Button):
     _names = {'ArcaneTower': towers.ArcaneTower,
               'CanonTower': towers.CanonTower,
               'GuardTower': towers.GuardTower}
 
-    def __init__(self, name, parent, image_size, button_size, func):
-        super().__init__('', parent)
-        self.name = name
-        self.setMaximumSize(button_size, button_size)
-        self.setMinimumSize(button_size, button_size)
-        self.setIcon(QtGui.QIcon('field/{}.png'.format(name)))
-        self.setIconSize(QtCore.QSize(image_size, image_size))
-        self.func = func
-        self.clicked.connect(self.react)
+    def react(self):
+        self.parent.widget.choose_tower(Tower_Button._names[self.name])
+
+
+class Magic_Button(Button):
+    _names = {'ArcaneTower': towers.ArcaneTower,
+              'CanonTower': towers.CanonTower,
+              'GuardTower': towers.GuardTower}
 
     def react(self):
-        self.func(Button._names[self.name])
+        pass
+
+
+class Control_Button(Button):
+    _names = {'ArcaneTower': towers.ArcaneTower,
+              'CanonTower': towers.CanonTower,
+              'GuardTower': towers.GuardTower}
+
+    def react(self):
+        pass
 
 
 class Label(QtWidgets.QFrame):
-    def __init__(self, text, parent, width, height, get_number):
+    _names = {'Gold': lambda x: x.game.get_gold_number(),
+              'Enemies': lambda x: x.game.get_remaining_enemies()}
+
+    def __init__(self, name, parent, cell_size):
         super().__init__(parent)
+        width_rate = 3
+        height_rate = 1.5
+        width = cell_size * width_rate
+        height = cell_size * height_rate
         self.setMaximumSize(width, height)
         self.setMinimumSize(width, height)
 
-        self.text = text
+        self.parent = parent
+        self.text = name
+
+        self.get_number = Label._names[name]
+
         self.label = QtWidgets.QLabel(
-            '{0}: {1}'.format(text, get_number()), self)
-        self.get_number = get_number
+            '{0}: {1}'.format(name, self.get_number(self.parent)), self)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
 
         layout = QtWidgets.QHBoxLayout()
@@ -114,7 +146,7 @@ class Label(QtWidgets.QFrame):
         self.update_timer.start(update_time)
 
     def update(self):
-        self.label.setText('{0}: {1}'.format(self.text, self.get_number()))
+        self.label.setText('{0}: {1}'.format(self.text, self.get_number(self.parent)))
 
 
 class Graphics(QtOpenGL.QGLWidget):
@@ -133,10 +165,13 @@ class Graphics(QtOpenGL.QGLWidget):
         self.creeps = {}
         self.attacks = {}
         self.healths = {}
+        self.attack_timers = {}
+        self.creep_timers = {}
 
         self.chosen_tower = None
 
         self.spawn_timer = None
+        self.wave_timer = None
         self.draw_timer = None
         self.count = 0
 
@@ -149,8 +184,7 @@ class Graphics(QtOpenGL.QGLWidget):
         self.shader = Shader('shader.vs', 'shader.fs')
         self.shader.save_attr_locations(
             ['aVertexPosition', 'aVertexTexCoord'])
-        self.shader.save_uniform_locations(
-            ['uModelMatrix', 'uViewMatrix', 'uProjectionMatrix', 'uTexture'])
+        self.shader.save_uniform_locations(['uTexture'])
         self.shader.bind()
 
         gl.glEnable(gl.GL_DEPTH_TEST)
@@ -169,16 +203,16 @@ class Graphics(QtOpenGL.QGLWidget):
 
         self.draw_timer = QtCore.QTimer()
         self.draw_timer.timeout.connect(self.update)
-        redraw_time = math.ceil(1000/60)
+        redraw_time = math.ceil(1000 / 60)
         self.draw_timer.start(redraw_time)
-        # self.test()
-
+    #     self.test()
+    #
     # def test(self):
     #     start = Point(10, 21)
     #     points = []
-    #     for i in range(10):
-    #         for j in range(10):
-    #             points.append(Point(start.row - 5 + i, start.col - 5 + j))
+    #     for i in range(3):
+    #         for j in range(3):
+    #             points.append(Point(start.row - 1 + i, start.col - 1 + j))
     #     for i, point in enumerate(points):
     #         self.attacks[points[i]] = Mesh.get_line(
     #             start,
@@ -213,12 +247,13 @@ class Graphics(QtOpenGL.QGLWidget):
                 self.screen_width / len(self.game.field[0]))
             cell_height = math.floor(
                 self.screen_height / len(self.game.field))
-            row = math.floor(event.globalY() / cell_height)
-            col = math.floor(event.globalX() / cell_width)
+            cursor_pos = self.mapFromGlobal(QtGui.QCursor().pos())
+            row = math.floor(cursor_pos.y() / cell_height)
+            col = math.floor(cursor_pos.x() / cell_width)
             if not game_logic.in_field(self.game.field, Point(row, col)):
                 return
             if (not isinstance(self.game.field[row][col], game.Map) or
-                    self.game.field[row][col].type != game_logic.Type.Grass):
+                        self.game.field[row][col].type != game_logic.Type.Grass):
                 return
             self.place_tower(row, col, self.chosen_tower)
             self.chosen_tower = None
@@ -262,7 +297,8 @@ class Graphics(QtOpenGL.QGLWidget):
                              1 - (row + 1) * self.cell_height + bias,
                              priority)
         quad.set_texture(
-            Image.open('field/{}.png'.format(unit_type.__name__)))
+            Image.open('{0}/{1}.png'.format(
+                consts.TEXTURES_FOLDER, unit_type.__name__)))
         return quad
 
     def start_creep_spawn(self):
@@ -272,27 +308,29 @@ class Graphics(QtOpenGL.QGLWidget):
         self.spawn_wave(random.choice(creep_types), 5)
 
     def spawn_wave(self, creep, amount):
-        def spawn():
-            if self.count == amount:
-                return
-            self.count += 1
-            point = self.game.portal
-
-            self.game.place_unit(point.row, point.col, type(creep))
-            self.creeps[point] = self.get_unit(
-                point.row, point.col, type(creep))
-            self.move_creep(self.game.field[point.row][point.col])
-            spawn_time = 15000
-            QtCore.QTimer.singleShot(round(spawn_time / creep.speed), spawn)
-
-        if self.game.end:
-            return
-
         self.count = 0
-        spawn()
+        self.spawn(creep, amount)
+
+    def spawn(self, creep, amount):
+        if self.count == amount or self.game.end:
+            self.wave_timer.stop()
+            return
+        self.count += 1
+        point = self.game.portal
+
+        self.game.place_unit(point.row, point.col, type(creep))
+        self.creeps[point] = self.get_unit(
+            point.row, point.col, type(creep))
+        self.move_creep(self.game.field[point.row][point.col])
+
+        self.wave_timer = QtCore.QTimer()
+        self.wave_timer.timeout.connect(lambda: self.spawn(creep, amount))
+        spawn_time = 15000
+        self.wave_timer.start(round(spawn_time / creep.speed))
 
     def move_creep(self, creep):
         self.creeps.pop(Point(creep.row, creep.col), None)
+        timer = self.creep_timers.pop(Point(creep.row, creep.col), None)
         stop = creep.move(self.game.field, self.game)
         bias = self.cell_height * 0.025
         row = creep.row
@@ -307,19 +345,23 @@ class Graphics(QtOpenGL.QGLWidget):
         health = consts.MAX_HEALTH[type(creep).__name__]
         rate = creep.health / health
         self.healths[Point(row, col)] = Mesh.get_line(
-            Point(row+0.6, col-0.4),
-            Point(row+0.6, col-0.4+rate),
+            Point(row + 0.6, col - 0.4),
+            Point(row + 0.6, col - 0.4 + rate),
             0.15,
             self.cell_width,
             self.cell_height)
         self.creeps[Point(row, col)].set_texture(
-            Image.open('field/{}.png'.format(type(creep).__name__)))
+            Image.open('{0}/{1}.png'.format(
+                consts.TEXTURES_FOLDER, type(creep).__name__)))
         if stop is True:
             self.creeps.pop(Point(row, col), None)
             return
-        spawn_time = 5000
-        QtCore.QTimer.singleShot(round(spawn_time / creep.speed),
-                                 lambda: self.move_creep(creep))
+        if timer is None:
+            timer = QtCore.QTimer()
+            spawn_time = 5000
+            timer.timeout.connect(lambda: self.move_creep(creep))
+            timer.start(round(spawn_time / creep.speed))
+        self.creep_timers[Point(row, col)] = timer
 
     def attack(self, tower):
         enemy = tower.attack(self.game)
@@ -336,6 +378,8 @@ class Graphics(QtOpenGL.QGLWidget):
         QtCore.QTimer.singleShot(
             delete_time, lambda: self.attacks.pop(
                 Point(tower.row, tower.col), None))
+        timer = QtCore.QTimer()
         spawn_time = 5000
-        QtCore.QTimer.singleShot(round(spawn_time / tower.speed),
-                                 lambda: self.attack(tower))
+        timer.timeout.connect(lambda: self.attack(tower))
+        timer.start(round(spawn_time / tower.speed))
+        self.attack_timers[Point(tower.row, tower.col)] = timer
