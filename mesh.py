@@ -31,7 +31,7 @@ class Mesh:
         gl.glTexParameterf(
             gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP)
 
-        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, 3,
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA,
                         img.size[0], img.size[1], 0,
                         gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image)
 

@@ -205,6 +205,9 @@ class Graphics(QtOpenGL.QGLWidget):
         self.draw_timer.timeout.connect(self.update)
         redraw_time = math.ceil(1000 / 60)
         self.draw_timer.start(redraw_time)
+
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
     #     self.test()
     #
     # def test(self):
