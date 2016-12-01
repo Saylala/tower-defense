@@ -40,7 +40,7 @@ class StartWindow(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.picture = QtWidgets.QLabel()
         self.picture.setScaledContents(True)
-        self.picture.setPixmap(QtGui.QPixmap(consts.LOGO_PATH))
+        self.picture.setPixmap(QtGui.QPixmap(consts.START_LOGO_PATH))
         layout.addWidget(self.picture)
 
         self.start_button = QtWidgets.QPushButton('Launch', self)
@@ -60,6 +60,42 @@ class StartWindow(QtWidgets.QWidget):
         self.hide()
 
 
+class DefeatWindow(QtWidgets.QWidget):
+    def __init__(self, screen, parent):
+        super(DefeatWindow, self).__init__()
+        self.screen = screen
+        self.parent = parent
+        self.setWindowTitle('Defeat')
+        self.setWindowIcon(QtGui.QIcon(consts.ICON_PATH))
+        self.setMinimumSize(screen.height() / 3, screen.height() / 3)
+        self.setMaximumSize(screen.height() / 3, screen.height() / 3)
+
+        layout = QtWidgets.QVBoxLayout()
+        self.picture = QtWidgets.QLabel()
+        self.picture.setScaledContents(True)
+        self.picture.setPixmap(QtGui.QPixmap(consts.DEFEAT_LOGO_PATH))
+        layout.addWidget(self.picture)
+
+        self.retry_button = QtWidgets.QPushButton('Try Again', self)
+        self.retry_button.clicked.connect(self.try_again)
+        layout.addWidget(self.retry_button)
+
+        self.quit_button = QtWidgets.QPushButton('Quit', self)
+        self.quit_button.clicked.connect(self.quit)
+        layout.addWidget(self.quit_button)
+
+        self.setLayout(layout)
+
+    def try_again(self):
+        self.hide()
+        self.parent.close()
+        subprocess.call(consts.PROCESS_NAME, shell=True)
+
+    def quit(self):
+        self.parent.close()
+        self.close()
+
+
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, screen):
         super(MainWindow, self).__init__()
@@ -77,7 +113,7 @@ class MainWindow(QtWidgets.QWidget):
         self.tower_buttons = None
         self.magic_buttons = None
         self.control_buttons = None
-
+        self.defeat_window = None
         self.start_game()
 
         self.showMaximized()
@@ -120,6 +156,15 @@ class MainWindow(QtWidgets.QWidget):
         for button in self.tower_buttons:
             button.set_button()
 
+    def game_over(self):
+        QtWidgets.QApplication.setOverrideCursor(
+            QtGui.QCursor(QtGui.QPixmap(consts.CURSOR_PATH), 0, 0))
+
+        self.defeat_window = DefeatWindow(self.screen, self)
+        self.defeat_window.setWindowFlags(
+            QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowMinimizeButtonHint)
+        self.defeat_window.show()
+
 
 class Button(QtWidgets.QPushButton):
     def __init__(self, name, parent, cell_size):
@@ -149,9 +194,12 @@ class TowerButton(Button):
         super().__init__(name, parent, cell_size)
         self._names = {'ArcaneTower': towers.ArcaneTower,
                        'CanonTower': towers.CanonTower,
-                       'GuardTower': towers.GuardTower}
+                       'GuardTower': towers.GuardTower,
+                       'MagicTower': towers.MagicTower}
 
     def react(self):
+        if self.parent.widget.paused:
+            return
         self.parent.reset_buttons()
         image = '{0}/{1}.png'.format(consts.TEXTURES_FOLDER, self.name)
         self.setIcon(QtGui.QIcon(self.create_border(image)))
@@ -172,11 +220,13 @@ class TowerButton(Button):
 class MagicButton(Button):
     def __init__(self, name, parent, cell_size):
         super().__init__(name, parent, cell_size)
-        self._names = {'LightningMagic': towers.CanonTower,
-                       'SwordMagic': towers.GuardTower}
+        self._names = {'FireMagic': self.parent.widget.cast_fire_magic,
+                       'IceMagic': self.parent.widget.cast_ice_magic}
 
     def react(self):
-        pass
+        if self.parent.widget.paused:
+            return
+        self._names[self.name]()
 
 
 class ControlButton(Button):
@@ -201,11 +251,11 @@ class ControlButton(Button):
             path = consts.PAUSE_PATH
         self.setIcon(QtGui.QIcon(path))
         self.setIconSize(QtCore.QSize(self.image_size, self.image_size))
-        self.parent.widget.paused = not self.parent.widget.paused
         if self.parent.widget.paused:
             self.parent.widget.resume()
         else:
             self.parent.widget.pause()
+        self.parent.widget.paused = not self.parent.widget.paused
 
 
 class Label(QtWidgets.QFrame):
@@ -250,6 +300,33 @@ class Label(QtWidgets.QFrame):
         self.label.setText('{0}: {1}'.format(self.text, self.get_number(self.parent)))
 
 
+class Timer(QtCore.QTimer):
+    def __init__(self, func, time):
+        super().__init__()
+        self.func = func
+        self.time = time
+        self.remaining = 0
+        self.onetime = False
+
+    def start_timer(self):
+        self.timeout.connect(self.func)
+        self.start(self.time)
+
+    def launch_once(self):
+        self.onetime = True
+        self.singleShot(self.time, self.func)
+
+    def pause(self):
+        self.remaining = self.remainingTime()
+        self.stop()
+
+    def resume(self):
+        if self.onetime:
+            QtCore.QTimer.singleShot(self.remaining, self.func)
+        else:
+            QtCore.QTimer.singleShot(self.remaining, self.start_timer)
+
+
 class Graphics(QtOpenGL.QGLWidget):
     def __init__(self, parent, width, height, state):
         super().__init__(parent)
@@ -266,8 +343,13 @@ class Graphics(QtOpenGL.QGLWidget):
         self.creeps = {}
         self.attacks = {}
         self.healths = {}
+        self.auras = {}
+        self.magic = {}
         self.attack_timers = {}
         self.creep_timers = {}
+        self.attack_deletions = []
+        self.magic_deletions = []
+        self.debuff_deletions = []
 
         self.chosen_tower = None
 
@@ -276,7 +358,9 @@ class Graphics(QtOpenGL.QGLWidget):
         self.draw_timer = None
         self.count = 0
         self.multiplier = consts.DEFAULT_MULTIPLIER
+        self.multiplier_index = consts.DEFAULT_MULTIPLIER_INDEX
         self.paused = False
+        self.over = False
 
     def initializeGL(self):
         self.cell_width = (2 * self.screen_width /
@@ -298,21 +382,19 @@ class Graphics(QtOpenGL.QGLWidget):
 
         self.set_field()
 
-        spawn_wave_time = consts.SPAWN_WAVE_TIME * self.multiplier
-        self.spawn_timer = QtCore.QTimer()
-        self.spawn_timer.timeout.connect(self.spawn_wave)
-        self.spawn_timer.start(spawn_wave_time)
+        self.start_spawn()
 
-        self.draw_timer = QtCore.QTimer()
-        self.draw_timer.timeout.connect(self.update)
-        self.draw_timer.start(consts.REDRAW_TIME)
+        self.draw_timer = Timer(self.update, consts.REDRAW_TIME)
+        self.draw_timer.start_timer()
 
         GL.glEnable(GL.GL_BLEND)
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
 
     def paintGL(self):
-        if self.game.end:
+        if self.over:
             return
+        if self.game.end:
+            self.game_over()
 
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
@@ -325,11 +407,17 @@ class Graphics(QtOpenGL.QGLWidget):
             self.creeps[creep].draw(self.shader.handles)
             self.healths[creep].draw(self.shader.handles)
 
+        for spell in self.magic:
+            self.magic[spell].draw(self.shader.handles)
+
         for attack in self.attacks:
             self.attacks[attack].draw(self.shader.handles)
 
+        for aura in self.auras:
+            self.auras[aura].draw(self.shader.handles)
+
     def mousePressEvent(self, event):
-        if not self.chosen_tower:
+        if not self.chosen_tower or self.paused:
             return
         if event.buttons() == QtCore.Qt.RightButton:
             self.parent.reset_buttons()
@@ -394,10 +482,17 @@ class Graphics(QtOpenGL.QGLWidget):
                 consts.TEXTURES_FOLDER, unit_type.__name__)))
         return quad
 
+    def start_spawn(self):
+        spawn_wave_time = consts.SPAWN_WAVE_TIME * self.multiplier
+        self.spawn_timer = Timer(self.spawn_wave, spawn_wave_time)
+        self.spawn_timer.start_timer()
+
     def spawn_wave(self):
         creep_types = [creeps.Peon(0, 0),
                        creeps.Grunt(0, 0),
-                       creeps.Raider(0, 0)]
+                       creeps.Raider(0, 0),
+                       creeps.Blademaster(0, 0),
+                       creeps.Shaman(0, 0)]
         self.count = 0
         self.spawn(random.choice(creep_types), 5, creep_types)
 
@@ -413,17 +508,15 @@ class Graphics(QtOpenGL.QGLWidget):
             point.row, point.col, type(creep))
         self.move_creep(unit)
 
-        spawn_creep_time = consts.SPAWN_CREEP_TIME / self.multiplier
-        self.wave_timer = QtCore.QTimer()
         next_type = random.choice(types)
-        self.wave_timer.timeout.connect(
-            lambda: self.spawn(next_type, amount, types))
-        self.wave_timer.start(round(spawn_creep_time / creep.speed))
+        spawn_creep_time = consts.SPAWN_CREEP_TIME / self.multiplier
+        self.wave_timer = Timer(lambda: self.spawn(next_type, amount, types), round(spawn_creep_time / creep.speed))
+        self.wave_timer.start_timer()
 
     def move_creep(self, creep):
         self.creeps.pop(creep, None)
-        timer = self.creep_timers.pop(creep, None)
-        stop = creep.move(self.game.field, self.game)
+        self.creep_timers.pop(creep, None)
+        stop = creep.move(self.game)
         bias = self.cell_height * 0.025
         row = creep.row
         col = creep.col
@@ -434,6 +527,8 @@ class Graphics(QtOpenGL.QGLWidget):
             -1 + (col + 1) * self.cell_width - bias,
             1 - (row + 1) * self.cell_height + bias,
             priority)
+        if creep.name == 'Shaman':
+            self.set_aura(creep)
         health = consts.MAX_HEALTH[type(creep).__name__]
         rate = creep.health / health
         self.healths[creep] = Mesh.get_line(
@@ -447,25 +542,37 @@ class Graphics(QtOpenGL.QGLWidget):
                 consts.TEXTURES_FOLDER, type(creep).__name__)))
         if stop is True:
             self.creeps.pop(creep, None)
+            self.auras.pop(creep, None)
             return
-        if timer is None:
-            move_creep_time = consts.MOVE_CREEP_TIME / self.multiplier
-            timer = QtCore.QTimer()
-            timer.timeout.connect(lambda: self.move_creep(creep))
-            timer.start(round(move_creep_time / creep.speed))
+        move_creep_time = consts.MOVE_CREEP_TIME / self.multiplier
+        timer = Timer(lambda: self.move_creep(creep), round(move_creep_time / creep.speed))
+        timer.start_timer()
         self.creep_timers[creep] = timer
+
+    def set_aura(self, creep):
+        row = creep.row + 0.5
+        col = creep.col + 0.5
+        priority = 0.7
+        aura = Mesh.get_quad(
+            -1 + (col + 1) * self.cell_width,
+            1 - (row - 1) * self.cell_height,
+            -1 + (col - 1) * self.cell_width,
+            1 - (row + 1) * self.cell_height,
+            priority)
+        aura.set_texture(Image.open(consts.AURA_PATH))
+        self.auras[creep] = aura
 
     def attack(self, tower):
         enemy = tower.attack(self.game)
         if enemy:
             self.add_attack(tower, enemy)
         attack_delete_time = consts.ATTACK_DELETE_TIME / self.multiplier
-        QtCore.QTimer.singleShot(
-            attack_delete_time, lambda: self.delete_attack(tower))
+        delete_timer = Timer(lambda: self.delete_attack(tower), attack_delete_time)
+        delete_timer.launch_once()
+        self.attack_deletions.append(delete_timer)
         tower_attack_time = consts.TOWER_ATTACK_TIME / self.multiplier
-        timer = QtCore.QTimer()
-        timer.timeout.connect(lambda: self.attack(tower))
-        timer.start(round(tower_attack_time / tower.speed))
+        timer = Timer(lambda: self.attack(tower), round(tower_attack_time / tower.speed))
+        timer.start_timer()
         self.attack_timers[Point(tower.row, tower.col)] = timer
 
     def add_attack(self, tower, enemy):
@@ -481,7 +588,7 @@ class Graphics(QtOpenGL.QGLWidget):
             return
         row = enemy.row + 0.5
         col = enemy.col + 0.5
-        priority = 0.1
+        priority = 0.19
         self.attacks[Point(tower.row, tower.col)] = Mesh.get_quad(
             -1 + (col + tower.range) * self.cell_width,
             1 - (row - tower.range) * self.cell_height,
@@ -499,22 +606,90 @@ class Graphics(QtOpenGL.QGLWidget):
         self.multiplier = consts.DEFAULT_MULTIPLIER
 
     def decrease_speed(self):
-        if self.multiplier < consts.MIN_MULTIPLIER:
+        if self.multiplier == consts.MIN_MULTIPLIER:
             return
-        self.multiplier += consts.SPEED_DECREASE
-        self.recalculate_timers()
+        self.multiplier_index -= 1
+        self.multiplier = consts.MULTIPLIERS[self.multiplier_index]
 
     def increase_speed(self):
-        if self.multiplier > consts.MAX_MULTIPLIER:
+        if self.multiplier == consts.MAX_MULTIPLIER:
             return
-        self.multiplier += consts.SPEED_INCREASE
-        self.recalculate_timers()
+        self.multiplier_index += 1
+        self.multiplier = consts.MULTIPLIERS[self.multiplier_index]
 
     def pause(self):
-        pass
+        if self.spawn_timer:
+            self.spawn_timer.pause()
+        if self.wave_timer:
+            self.wave_timer.pause()
+        for key in self.attack_timers:
+            self.attack_timers[key].pause()
+        for key in self.creep_timers:
+            self.creep_timers[key].pause()
+        for timer in self.attack_deletions:
+            timer.pause()
+        for timer in self.magic_deletions:
+            timer.pause()
+        for timer in self.debuff_deletions:
+            timer.pause()
 
     def resume(self):
-        self.recalculate_timers()
+        if self.spawn_timer:
+            self.spawn_timer.resume()
+        if self.wave_timer:
+            self.wave_timer.resume()
+        for key in self.attack_timers:
+            self.attack_timers[key].resume()
+        for key in self.creep_timers:
+            self.creep_timers[key].resume()
+        for timer in self.attack_deletions:
+            timer.resume()
+        for timer in self.magic_deletions:
+            timer.resume()
+        for timer in self.debuff_deletions:
+            timer.resume()
 
-    def recalculate_timers(self):
-        pass
+    def cast_fire_magic(self):
+        point = self.game.cast_fire()
+        if not point:
+            return
+        row = point.row + 0.5
+        col = point.col + 0.5
+        priority = 0.04
+        fire = Mesh.get_quad(
+            -1 + (col + consts.FIRE_RADIUS) * self.cell_width,
+            1 - (row - consts.FIRE_RADIUS) * self.cell_height,
+            -1 + (col - consts.FIRE_RADIUS) * self.cell_width,
+            1 - (row + consts.FIRE_RADIUS) * self.cell_height,
+            priority)
+        fire.set_texture(Image.open(consts.FIRE_PATH))
+        self.magic[point] = fire
+        magic_delete = Timer(lambda: self.magic.pop(point, None), consts.FIRE_DURATION)
+        magic_delete.launch_once()
+        self.magic_deletions.append(magic_delete)
+
+    def cast_ice_magic(self):
+        point = self.game.cast_ice()
+        if not point:
+            return
+        row = point.row + 0.5
+        col = point.col + 0.5
+        priority = 0.8
+        wind = Mesh.get_quad(
+            -1 + (col + consts.ICE_RADIUS) * self.cell_width,
+            1 - (row - consts.ICE_RADIUS) * self.cell_height,
+            -1 + (col - consts.ICE_RADIUS) * self.cell_width,
+            1 - (row + consts.ICE_RADIUS) * self.cell_height,
+            priority)
+        wind.set_texture(Image.open(consts.WIND_PATH))
+        self.magic[point] = wind
+        magic_delete = Timer(lambda: self.magic.pop(point, None), consts.ICE_DURATION)
+        magic_delete.launch_once()
+        self.magic_deletions.append(magic_delete)
+        debuff_delete = Timer(lambda: elf.game.disable_ice_debuff(), consts.ICE_DURATION)
+        debuff_delete.launch_once()
+        self.magic_deletions.append(debuff_delete)
+
+    def game_over(self):
+        self.over = True
+        self.parent.game_over()

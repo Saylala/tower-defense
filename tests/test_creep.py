@@ -29,7 +29,7 @@ class TestCreep(unittest.TestCase):
     def test_move_raider(self):
         test_game = game.Game()
         entrance = test_game.portal
-        test_game.place_unit(entrance.row, entrance.col, creeps.Raider)
+        test_game.place_unit(entrance.row, entrance.col, creeps.Blademaster)
         creep = test_game.field[entrance.row][entrance.col]
         creep.move(test_game.field, test_game)
         self.assertEqual(Point(entrance.row, entrance.col+1), Point(creep.row, creep.col))
@@ -59,7 +59,7 @@ class TestCreep(unittest.TestCase):
     def test_death_raider(self):
         test_game = game.Game()
         entrance = test_game.portal
-        test_game.place_unit(entrance.row, entrance.col, creeps.Raider)
+        test_game.place_unit(entrance.row, entrance.col, creeps.Blademaster)
         creep = test_game.field[entrance.row][entrance.col]
         creep.take_hit(90, test_game)
         creep.move(test_game.field, test_game)
@@ -86,7 +86,7 @@ class TestCreep(unittest.TestCase):
     def test_reward_raider(self):
         test_game = game.Game()
         entrance = test_game.portal
-        test_game.place_unit(entrance.row, entrance.col, creeps.Raider)
+        test_game.place_unit(entrance.row, entrance.col, creeps.Blademaster)
         creep = test_game.field[entrance.row][entrance.col]
         creep.take_hit(90, test_game)
         self.assertEqual(test_game.gold, 120)

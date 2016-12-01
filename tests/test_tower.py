@@ -12,7 +12,7 @@ class TestTower(unittest.TestCase):
 
     def test_gold_guard(self):
         test_game = game.Game()
-        test_game.place_unit(0, 0, towers.GuardTower)
+        test_game.place_unit(0, 0, towers.MagicTower)
         self.assertEqual(85, test_game.gold)
 
     def test_gold_canon(self):
@@ -29,7 +29,7 @@ class TestTower(unittest.TestCase):
 
     def test_damage_guard(self):
         test_game = game.Game()
-        test_game.place_unit(0, 0, towers.GuardTower)
+        test_game.place_unit(0, 0, towers.MagicTower)
         test_game.place_unit(0, 1, creeps.Peon)
         test_game.field[0][0].attack(test_game)
         self.assertEqual(25, test_game.field[0][1].health)
@@ -50,7 +50,7 @@ class TestTower(unittest.TestCase):
 
     def test_range_guard(self):
         test_game = game.Game()
-        test_game.place_unit(0, 0, towers.GuardTower)
+        test_game.place_unit(0, 0, towers.MagicTower)
         test_game.place_unit(0, 3, creeps.Peon)
         test_game.field[0][0].attack(test_game)
         self.assertEqual(50, test_game.field[0][3].health)

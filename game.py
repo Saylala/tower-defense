@@ -4,6 +4,7 @@ import towers
 import game_field
 import consts
 import unit
+import random
 
 Map = collections.namedtuple('Map', 'row, col, type')
 Point = collections.namedtuple('Point', 'row, col')
@@ -19,6 +20,7 @@ class Game:
         self.enemies_left = consts.ENEMIES_ALLOWED
         self.path = game_field.Path(self.portal, self.castle, self.field).path
         self.enemies = []
+        self.debuffed_enemies = {}
 
     @staticmethod
     def get_field():
@@ -54,3 +56,34 @@ class Game:
 
     def game_over(self):
         self.end = True
+
+    def cast_fire(self):
+        if self.gold < consts.FIRE_PRICE or len(self.enemies) == 0:
+            return False
+        self.gold -= consts.FIRE_PRICE
+        target = random.choice(self.enemies)
+        for enemy in self.enemies:
+            distance = game_field.get_distance(target, enemy)
+            if distance > consts.FIRE_RADIUS:
+                continue
+            enemy.take_hit(consts.FIRE_DAMAGE, self)
+        return target
+
+    def cast_ice(self):
+        if self.gold < consts.ICE_PRICE or len(self.enemies) == 0:
+            return False
+        self.gold -= consts.ICE_PRICE
+        target = random.choice(self.enemies)
+        for enemy in self.enemies:
+            distance = game_field.get_distance(target, enemy)
+            if (distance > consts.ICE_RADIUS
+                or enemy.speed <= consts.ICE_SLOWDOWN):
+                continue
+            self.debuffed_enemies[enemy] = enemy.speed
+            enemy.speed -= consts.ICE_SLOWDOWN
+        return target
+
+    def disable_ice_debuff(self):
+        for enemy in self.debuffed_enemies:
+            enemy.speed = self.debuffed_enemies[enemy]
+        self.debuffed_enemies = {}
