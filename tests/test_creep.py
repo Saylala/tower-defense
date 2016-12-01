@@ -14,64 +14,64 @@ class TestCreep(unittest.TestCase):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Peon)
-        creep = test_game.field[entrance.row][entrance.col]
-        creep.move(test_game.field, test_game)
+        creep = test_game.enemies[0]
+        creep.move(test_game)
         self.assertEqual(Point(entrance.row, entrance.col+1), Point(creep.row, creep.col))
 
     def test_move_grunt(self):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Grunt)
-        creep = test_game.field[entrance.row][entrance.col]
-        creep.move(test_game.field, test_game)
+        creep = test_game.enemies[0]
+        creep.move(test_game)
         self.assertEqual(Point(entrance.row, entrance.col+1), Point(creep.row, creep.col))
 
     def test_move_raider(self):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Blademaster)
-        creep = test_game.field[entrance.row][entrance.col]
-        creep.move(test_game.field, test_game)
+        creep = test_game.enemies[0]
+        creep.move(test_game)
         self.assertEqual(Point(entrance.row, entrance.col+1), Point(creep.row, creep.col))
 
     def test_death_peon(self):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Peon)
-        creep = test_game.field[entrance.row][entrance.col]
+        creep = test_game.enemies[0]
         creep.take_hit(60, test_game)
-        creep.move(test_game.field, test_game)
+        creep.move(test_game)
         self.assertEqual(
             test_game.field[entrance.row][entrance.col],
-            Map(entrance.row, entrance.col, game_field.CellType.Path))
+            Map(entrance.row, entrance.col, game_field.CellType.Portal))
 
     def test_death_grunt(self):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Grunt)
-        creep = test_game.field[entrance.row][entrance.col]
+        creep = test_game.enemies[0]
         creep.take_hit(110, test_game)
-        creep.move(test_game.field, test_game)
+        creep.move(test_game)
         self.assertEqual(
             test_game.field[entrance.row][entrance.col],
-            Map(entrance.row, entrance.col, game_field.CellType.Path))
+            Map(entrance.row, entrance.col, game_field.CellType.Portal))
 
     def test_death_raider(self):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Blademaster)
-        creep = test_game.field[entrance.row][entrance.col]
+        creep = test_game.enemies[0]
         creep.take_hit(90, test_game)
-        creep.move(test_game.field, test_game)
+        creep.move(test_game)
         self.assertEqual(
             test_game.field[entrance.row][entrance.col],
-            Map(entrance.row, entrance.col, game_field.CellType.Path))
+            Map(entrance.row, entrance.col, game_field.CellType.Portal))
 
     def test_reward_peon(self):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Peon)
-        creep = test_game.field[entrance.row][entrance.col]
+        creep = test_game.enemies[0]
         creep.take_hit(60, test_game)
         self.assertEqual(test_game.gold, 110)
 
@@ -79,15 +79,15 @@ class TestCreep(unittest.TestCase):
         test_game = game.Game()
         entrance = test_game.portal
         test_game.place_unit(entrance.row, entrance.col, creeps.Grunt)
-        creep = test_game.field[entrance.row][entrance.col]
+        creep = test_game.enemies[0]
         creep.take_hit(110, test_game)
         self.assertEqual(test_game.gold, 115)
 
     def test_reward_raider(self):
         test_game = game.Game()
         entrance = test_game.portal
-        test_game.place_unit(entrance.row, entrance.col, creeps.Blademaster)
-        creep = test_game.field[entrance.row][entrance.col]
+        test_game.place_unit(entrance.row, entrance.col, creeps.Raider)
+        creep = test_game.enemies[0]
         creep.take_hit(90, test_game)
         self.assertEqual(test_game.gold, 120)
 

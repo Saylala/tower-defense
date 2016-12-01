@@ -687,7 +687,7 @@ class Graphics(QtOpenGL.QGLWidget):
         magic_delete = Timer(lambda: self.magic.pop(point, None), consts.ICE_DURATION)
         magic_delete.launch_once()
         self.magic_deletions.append(magic_delete)
-        debuff_delete = Timer(lambda: elf.game.disable_ice_debuff(), consts.ICE_DURATION)
+        debuff_delete = Timer(lambda: self.game.disable_ice_debuff(), consts.ICE_DURATION)
         debuff_delete.launch_once()
         self.magic_deletions.append(debuff_delete)
 

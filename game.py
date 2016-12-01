@@ -1,6 +1,4 @@
 import collections
-import creeps
-import towers
 import game_field
 import consts
 import unit
