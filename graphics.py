@@ -604,6 +604,7 @@ class Graphics(QtOpenGL.QGLWidget):
 
     def reset_speed(self):
         self.multiplier = consts.DEFAULT_MULTIPLIER
+        self.multiplier_index = consts.DEFAULT_MULTIPLIER_INDEX
 
     def decrease_speed(self):
         if self.multiplier == consts.MIN_MULTIPLIER:
