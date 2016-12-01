@@ -49,7 +49,7 @@ DEFAULT_MAP = ['GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
 
 TOWERS_NAMES = ['ArcaneTower', 'CanonTower', 'GuardTower']
 MAGIC_NAMES = ['LightningMagic', 'SwordMagic']
-CONTROL_NAMES = ['Reset', 'Play', 'Pause', 'Slower', 'Faster', 'Restart']
+CONTROL_NAMES = ['Reset', 'Pause', 'Slower', 'Faster', 'Restart']
 
 LABEL_NAMES = ['Gold', 'Enemies']
 
@@ -58,6 +58,8 @@ ICON_PATH = '{}/Icon.png'.format(TEXTURES_FOLDER)
 LOGO_PATH = '{}/Logo.png'.format(TEXTURES_FOLDER)
 CURSOR_PATH = '{}/Cursor.png'.format(TEXTURES_FOLDER)
 BORDER_PATH = '{}/Border.png'.format(TEXTURES_FOLDER)
+PLAY_PATH = '{}/Play.png'.format(TEXTURES_FOLDER)
+PAUSE_PATH = '{}/Pause.png'.format(TEXTURES_FOLDER)
 
 PROCESS_NAME = 'python tower_defense.py'
 
@@ -70,3 +72,9 @@ SPAWN_CREEP_TIME = 15000
 MOVE_CREEP_TIME = 5000
 TOWER_ATTACK_TIME = 5000
 ATTACK_DELETE_TIME = 200
+
+DEFAULT_MULTIPLIER = 1
+MAX_MULTIPLIER = 5
+MIN_MULTIPLIER = 0.5
+SPEED_DECREASE = -0.11
+SPEED_INCREASE = 1

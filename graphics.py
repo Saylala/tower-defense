@@ -125,6 +125,7 @@ class Button(QtWidgets.QPushButton):
     def __init__(self, name, parent, cell_size):
         super().__init__('', parent)
         self.name = name
+        self._names = {}
         self.parent = parent
         image_ratio = 1.125
         button_ratio = 1.5
@@ -144,18 +145,21 @@ class Button(QtWidgets.QPushButton):
 
 
 class TowerButton(Button):
-    _names = {'ArcaneTower': towers.ArcaneTower,
-              'CanonTower': towers.CanonTower,
-              'GuardTower': towers.GuardTower}
+    def __init__(self, name, parent, cell_size):
+        super().__init__(name, parent, cell_size)
+        self._names = {'ArcaneTower': towers.ArcaneTower,
+                       'CanonTower': towers.CanonTower,
+                       'GuardTower': towers.GuardTower}
 
     def react(self):
         self.parent.reset_buttons()
         image = '{0}/{1}.png'.format(consts.TEXTURES_FOLDER, self.name)
         self.setIcon(QtGui.QIcon(self.create_border(image)))
         self.setIconSize(QtCore.QSize(self.button_size, self.button_size))
-        self.parent.widget.choose_tower(TowerButton._names[self.name])
+        self.parent.widget.choose_tower(self._names[self.name])
 
-    def create_border(self, name):
+    @staticmethod
+    def create_border(name):
         image = QtGui.QPixmap(name)
         overlay = QtGui.QPixmap(consts.BORDER_PATH)
         painter = QtGui.QPainter()
@@ -166,28 +170,42 @@ class TowerButton(Button):
 
 
 class MagicButton(Button):
-    _names = {'LightningMagic': towers.CanonTower,
-              'SwordMagic': towers.GuardTower}
+    def __init__(self, name, parent, cell_size):
+        super().__init__(name, parent, cell_size)
+        self._names = {'LightningMagic': towers.CanonTower,
+                       'SwordMagic': towers.GuardTower}
 
     def react(self):
         pass
 
 
 class ControlButton(Button):
-    _names = {'Reset': towers.CanonTower,
-              'Play': towers.GuardTower,
-              'Pause': towers.CanonTower,
-              'Slower': towers.GuardTower,
-              'Faster': towers.CanonTower,
-              'Restart': lambda: self.restart()}
+    def __init__(self, name, parent, cell_size):
+        super().__init__(name, parent, cell_size)
+        self._names = {'Reset': self.parent.widget.reset_speed,
+                       'Pause': self.pause,
+                       'Slower': self.parent.widget.decrease_speed,
+                       'Faster': self.parent.widget.increase_speed,
+                       'Restart': self.restart}
 
     def react(self):
-        if self.name == 'Restart':
-            self.restart()
+        self._names[self.name]()
 
     def restart(self):
         self.parent.close()
         subprocess.call(consts.PROCESS_NAME, shell=True)
+
+    def pause(self):
+        path = consts.PLAY_PATH
+        if self.parent.widget.paused:
+            path = consts.PAUSE_PATH
+        self.setIcon(QtGui.QIcon(path))
+        self.setIconSize(QtCore.QSize(self.image_size, self.image_size))
+        self.parent.widget.paused = not self.parent.widget.paused
+        if self.parent.widget.paused:
+            self.parent.widget.resume()
+        else:
+            self.parent.widget.pause()
 
 
 class Label(QtWidgets.QFrame):
@@ -257,7 +275,8 @@ class Graphics(QtOpenGL.QGLWidget):
         self.wave_timer = None
         self.draw_timer = None
         self.count = 0
-        self.multiplier = 1
+        self.multiplier = consts.DEFAULT_MULTIPLIER
+        self.paused = False
 
     def initializeGL(self):
         self.cell_width = (2 * self.screen_width /
@@ -394,7 +413,7 @@ class Graphics(QtOpenGL.QGLWidget):
             point.row, point.col, type(creep))
         self.move_creep(unit)
 
-        spawn_creep_time = consts.SPAWN_CREEP_TIME * self.multiplier
+        spawn_creep_time = consts.SPAWN_CREEP_TIME / self.multiplier
         self.wave_timer = QtCore.QTimer()
         next_type = random.choice(types)
         self.wave_timer.timeout.connect(
@@ -430,7 +449,7 @@ class Graphics(QtOpenGL.QGLWidget):
             self.creeps.pop(creep, None)
             return
         if timer is None:
-            move_creep_time = consts.MOVE_CREEP_TIME * self.multiplier
+            move_creep_time = consts.MOVE_CREEP_TIME / self.multiplier
             timer = QtCore.QTimer()
             timer.timeout.connect(lambda: self.move_creep(creep))
             timer.start(round(move_creep_time / creep.speed))
@@ -440,10 +459,10 @@ class Graphics(QtOpenGL.QGLWidget):
         enemy = tower.attack(self.game)
         if enemy:
             self.add_attack(tower, enemy)
-        attack_delete_time = consts.ATTACK_DELETE_TIME * self.multiplier
+        attack_delete_time = consts.ATTACK_DELETE_TIME / self.multiplier
         QtCore.QTimer.singleShot(
             attack_delete_time, lambda: self.delete_attack(tower))
-        tower_attack_time = consts.TOWER_ATTACK_TIME * self.multiplier
+        tower_attack_time = consts.TOWER_ATTACK_TIME / self.multiplier
         timer = QtCore.QTimer()
         timer.timeout.connect(lambda: self.attack(tower))
         timer.start(round(tower_attack_time / tower.speed))
@@ -465,7 +484,7 @@ class Graphics(QtOpenGL.QGLWidget):
         priority = 0.1
         self.attacks[Point(tower.row, tower.col)] = Mesh.get_quad(
             -1 + (col + tower.range) * self.cell_width,
-            1 - (row - tower.range) * self.cell_height ,
+            1 - (row - tower.range) * self.cell_height,
             -1 + (col - tower.range) * self.cell_width,
             1 - (row + tower.range) * self.cell_height,
             priority)
@@ -475,3 +494,27 @@ class Graphics(QtOpenGL.QGLWidget):
 
     def delete_attack(self, tower):
         self.attacks.pop(Point(tower.row, tower.col), None)
+
+    def reset_speed(self):
+        self.multiplier = consts.DEFAULT_MULTIPLIER
+
+    def decrease_speed(self):
+        if self.multiplier < consts.MIN_MULTIPLIER:
+            return
+        self.multiplier += consts.SPEED_DECREASE
+        self.recalculate_timers()
+
+    def increase_speed(self):
+        if self.multiplier > consts.MAX_MULTIPLIER:
+            return
+        self.multiplier += consts.SPEED_INCREASE
+        self.recalculate_timers()
+
+    def pause(self):
+        pass
+
+    def resume(self):
+        self.recalculate_timers()
+
+    def recalculate_timers(self):
+        pass
