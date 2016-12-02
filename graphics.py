@@ -321,6 +321,8 @@ class Timer(QtCore.QTimer):
         self.stop()
 
     def resume(self):
+        if self.remaining < 0:
+            return
         if self.onetime:
             QtCore.QTimer.singleShot(self.remaining, self.func)
         else:
