@@ -2,63 +2,113 @@ import math
 import collections
 
 CreepsConsts = collections.namedtuple(
-    'CreepsConsts', 'health, speed, reward')
+    'CreepsConsts', 'health, speed, reward, power')
 TowersConsts = collections.namedtuple(
     'TowersConsts', 'damage, range, speed, price')
 Point = collections.namedtuple('Point', 'row, col')
 
 
-UNITS = {'creeps': {'Peon': CreepsConsts(50, 20, 10),
-                    'Grunt': CreepsConsts(100, 15, 15),
-                    'Raider': CreepsConsts(80, 25, 20),
-                    'Blademaster': CreepsConsts(90, 20, 25),
-                    'Shaman': CreepsConsts(75, 15, 20)},
+UNITS = {'creeps': {'Peon': CreepsConsts(50, 20, 10, 35),
+                    'Grunt': CreepsConsts(100, 15, 15, 50),
+                    'Raider': CreepsConsts(80, 25, 20, 50),
+                    'Blademaster': CreepsConsts(90, 20, 25, 50),
+                    'Shaman': CreepsConsts(75, 15, 20, 35),
+                    'Footman': CreepsConsts(40, 15, 0, 35)},
          'towers': {'ArcaneTower': TowersConsts(15, 3, 5, 10),
                     'GuardTower': TowersConsts(25, 2, 5, 15),
                     'CanonTower': TowersConsts(35, 1.5, 3, 20),
-                    'MagicTower': TowersConsts(25, 2.5, 5, 30)}}
+                    'MagicTower': TowersConsts(25, 2.5, 5, 30),
+                    'BarracksTower': TowersConsts(0, 3, 1, 50)}}
 
 MAX_HEALTH = {'Peon': 50,
               'Grunt': 100,
               'Raider': 80,
               'Blademaster': 90,
-              'Shaman': 75}
+              'Shaman': 75,
+              'Footman': 40}
 
 TITLE = 'Tower Defense'
 START_GOLD = 100
 ENEMIES_ALLOWED = 5
 PORTAL = Point(10, 0)
 CASTLE = Point(10, 39)
+CREEPS_IN_WAVE = 5
 
-DEFAULT_MAP = ['GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
-               'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
-               'GGGGGGGGG       GGGGGGGGGGGGGGGGGGGGGGGG',
-               'GGGGGGGGG GGGGG GGGG      GGGGGGGGGGGGGG',
-               'GGGGGGGGG GGGGG GGGG GGGG GGG     GGGGGG',
-               'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
-               'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
-               'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
-               'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
-               'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
-               'P   GGGGG GGGGG GGGG GGGG GGG GGG GG   C',
-               'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
-               'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
-               'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
-               'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
-               'GGG GGGGG GGGGG GGGG GGGG GGG GGG    GGG',
-               'GGG GGGGG GGGGG GGGG GGGG     GGGGGGGGGG',
-               'GGG GGGGG GGGGG      GGGGGGGGGGGGGGGGGGG',
-               'GGG       GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
-               'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
-               'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG']
+LEVEL1 = ['GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGG       GGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGG GGGGG GGGG      GGGGGGGGGGGGGG',
+          'GGGGGGGGG GGGGG GGGG GGGG GGG     GGGGGG',
+          'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
+          'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
+          'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
+          'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
+          'GGGGGGGGG GGGGG GGGG GGGG GGG GGG GGGGGG',
+          'P   GGGGG GGGGG GGGG GGGG GGG GGG GG   C',
+          'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
+          'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
+          'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
+          'GGG GGGGG GGGGG GGGG GGGG GGG GGG GG GGG',
+          'GGG GGGGG GGGGG GGGG GGGG GGG GGG    GGG',
+          'GGG GGGGG GGGGG GGGG GGGG     GGGGGGGGGG',
+          'GGG GGGGG GGGGG      GGGGGGGGGGGGGGGGGGG',
+          'GGG       GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG']
 
-TOWERS_NAMES = ['ArcaneTower', 'CanonTower', 'GuardTower', 'MagicTower']
+LEVEL2 = ['GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGG                                  GGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG GGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG GGG',
+          'GGG GGGG         GGGGGGGGGGGGGGGGGGG GGG',
+          'GGG GGGG GGGGGGG GGGGGG       GGGGGG GGG',
+          'GGG GGGG GGGGGGG GGGGGG GGGGG GGGGGG GGG',
+          'GGG GGGG GGGGGGG GGGGGG GGGGG GGGGGG GGG',
+          'GGG GGGG GGGGGGG GGGGGG GGGGG GGGGGG GGG',
+          'P        GGGGGGG GGGGGG GGGGG GGG      C',
+          'GGG GGGGGGGGGGGG GGGGGG GGGGG GGG GG GGG',
+          'GGG GGGGGGGGGGGG GGGGGG GGGGG GGG GG GGG',
+          'GGG GGGGGGGGGGGG GGGGGG GGGGG GGG GG GGG',
+          'GGG GGGGGGGGGGGG GGGGGG GGGGG     GG GGG',
+          'GGG GGGGGGGGGGGG        GGGGGGGGGGGG GGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG GGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG GGG',
+          'GGG                                  GGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG']
+
+LEVEL3 = ['GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGG       GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGG GGGGG       GGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGG GGGGGGGGGGG      GGGGGGGGGGGGGGGGGGG',
+          'GGG GGGGGGGGGGGGGGGG      GGGGGGGGGGGGGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGG     GGGGGGGGGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGG     GGGGGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGG    GGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG GGG',
+          'P   GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG   C',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG GGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGGGGGG    GGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGGGGGG     GGGGGG',
+          'GGG GGGGGGGGGGGGGGGGGGGGG     GGGGGGGGGG',
+          'GGG GGGGGGGGGGGGGGGG      GGGGGGGGGGGGGG',
+          'GGG GGGGGGGGGGG      GGGGGGGGGGGGGGGGGGG',
+          'GGG GGGGG       GGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGG       GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+          'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG']
+
+LEVELS = [LEVEL1, LEVEL2, LEVEL3]
+
+TOWERS_NAMES = ['ArcaneTower', 'CanonTower', 'GuardTower', 'MagicTower', 'BarracksTower']
 MAGIC_NAMES = ['FireMagic', 'IceMagic']
 CONTROL_NAMES = ['Reset', 'Pause', 'Slower', 'Faster', 'Restart']
 
 LABEL_NAMES = ['Gold', 'Enemies']
 
-TEXTURES_FOLDER = 'Field'
+TEXTURES_FOLDER = 'field'
 ICON_PATH = '{}/Icon.png'.format(TEXTURES_FOLDER)
 START_LOGO_PATH = '{}/StartLogo.png'.format(TEXTURES_FOLDER)
 DEFEAT_LOGO_PATH = '{}/DefeatLogo.png'.format(TEXTURES_FOLDER)

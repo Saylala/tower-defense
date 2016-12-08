@@ -4,6 +4,7 @@ import collections
 import random
 import subprocess
 from PyQt5 import QtOpenGL, QtGui, QtWidgets, QtCore
+from PyQt5.QtCore import Qt
 from PIL import Image
 import OpenGL.GL as GL
 import game
@@ -22,7 +23,7 @@ def start():
 
     window = StartWindow(app.desktop().screenGeometry())
     window.setWindowFlags(
-        QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowMinimizeButtonHint)
+        Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint)
     window.show()
 
     sys.exit(app.exec_())
@@ -54,7 +55,7 @@ class StartWindow(QtWidgets.QWidget):
 
         window = MainWindow(self.screen)
         window.setWindowFlags(
-            QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowMinimizeButtonHint)
+            Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint)
         window.show()
 
         self.hide()
@@ -162,7 +163,7 @@ class MainWindow(QtWidgets.QWidget):
 
         self.defeat_window = DefeatWindow(self.screen, self)
         self.defeat_window.setWindowFlags(
-            QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowMinimizeButtonHint)
+            Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint)
         self.defeat_window.show()
 
 
@@ -195,7 +196,8 @@ class TowerButton(Button):
         self._names = {'ArcaneTower': towers.ArcaneTower,
                        'CanonTower': towers.CanonTower,
                        'GuardTower': towers.GuardTower,
-                       'MagicTower': towers.MagicTower}
+                       'MagicTower': towers.MagicTower,
+                       'BarracksTower': towers.BarracksTower}
 
     def react(self):
         if self.parent.widget.paused:
@@ -297,7 +299,8 @@ class Label(QtWidgets.QFrame):
         self.update_timer.start(update_time)
 
     def update(self):
-        self.label.setText('{0}: {1}'.format(self.text, self.get_number(self.parent)))
+        self.label.setText(
+            '{0}: {1}'.format(self.text, self.get_number(self.parent)))
 
 
 class Timer(QtCore.QTimer):
@@ -321,8 +324,6 @@ class Timer(QtCore.QTimer):
         self.stop()
 
     def resume(self):
-        if self.remaining < 0:
-            return
         if self.onetime:
             QtCore.QTimer.singleShot(self.remaining, self.func)
         else:
@@ -436,7 +437,8 @@ class Graphics(QtOpenGL.QGLWidget):
             if not game_field.in_field(self.game.field, Point(row, col)):
                 return
             if (not isinstance(self.game.field[row][col], game.Map) or
-                    self.game.field[row][col].type != game_field.CellType.Grass):
+                    (self.game.field[row][col].name !=
+                        game_field.CellType.Grass)):
                 return
             self.place_tower(row, col, self.chosen_tower)
             self.chosen_tower = None
@@ -465,7 +467,7 @@ class Graphics(QtOpenGL.QGLWidget):
             for col, figure in enumerate(line):
                 if not isinstance(figure, game.Map):
                     continue
-                image = images[self.game.field[row][col].type.name]
+                image = images[self.game.field[row][col].name.name]
                 field.paste(image, (col * width, row * height))
         priority = 0.9
         self.field_quad = Mesh.get_quad(-1, 1, 1, -1, priority)
@@ -490,20 +492,24 @@ class Graphics(QtOpenGL.QGLWidget):
         self.spawn_timer.start_timer()
 
     def spawn_wave(self):
-        creep_types = [creeps.Peon(0, 0),
-                       creeps.Grunt(0, 0),
-                       creeps.Raider(0, 0),
-                       creeps.Blademaster(0, 0),
-                       creeps.Shaman(0, 0)]
+        creep_types = [creeps.Peon(0, 0, self.game),
+                       creeps.Grunt(0, 0, self.game),
+                       creeps.Raider(0, 0, self.game),
+                       creeps.Blademaster(0, 0, self.game),
+                       creeps.Shaman(0, 0, self.game)]
         self.count = 0
-        self.spawn(random.choice(creep_types), 5, creep_types)
+        self.spawn(
+            random.choice(creep_types),
+            consts.CREEPS_IN_WAVE,
+            creep_types,
+            consts.PORTAL)
 
-    def spawn(self, creep, amount, types):
+    def spawn(self, creep, amount, types, point):
         if self.count == amount or self.game.end:
             self.wave_timer.stop()
             return
-        self.count += 1
-        point = self.game.portal
+        if creep.name != 'Footman':
+            self.count += 1
 
         unit = self.game.place_unit(point.row, point.col, type(creep))
         self.creeps[unit] = self.get_unit(
@@ -512,7 +518,9 @@ class Graphics(QtOpenGL.QGLWidget):
 
         next_type = random.choice(types)
         spawn_creep_time = consts.SPAWN_CREEP_TIME / self.multiplier
-        self.wave_timer = Timer(lambda: self.spawn(next_type, amount, types), round(spawn_creep_time / creep.speed))
+        self.wave_timer = Timer(
+            lambda: self.spawn(next_type, amount, types, point),
+            round(spawn_creep_time / creep.speed))
         self.wave_timer.start_timer()
 
     def move_creep(self, creep):
@@ -547,7 +555,9 @@ class Graphics(QtOpenGL.QGLWidget):
             self.auras.pop(creep, None)
             return
         move_creep_time = consts.MOVE_CREEP_TIME / self.multiplier
-        timer = Timer(lambda: self.move_creep(creep), round(move_creep_time / creep.speed))
+        timer = Timer(
+            lambda: self.move_creep(creep),
+            round(move_creep_time / creep.speed))
         timer.start_timer()
         self.creep_timers[creep] = timer
 
@@ -566,16 +576,29 @@ class Graphics(QtOpenGL.QGLWidget):
 
     def attack(self, tower):
         enemy = tower.attack(self.game)
-        if enemy:
+        if enemy and tower.name != 'BarracksTower':
             self.add_attack(tower, enemy)
+        if tower.name == 'BarracksTower':
+            for unit in enemy:
+                self.spawn_ally(tower, unit)
         attack_delete_time = consts.ATTACK_DELETE_TIME / self.multiplier
-        delete_timer = Timer(lambda: self.delete_attack(tower), attack_delete_time)
+        delete_timer = Timer(
+            lambda: self.delete_attack(tower),
+            attack_delete_time)
         delete_timer.launch_once()
         self.attack_deletions.append(delete_timer)
         tower_attack_time = consts.TOWER_ATTACK_TIME / self.multiplier
-        timer = Timer(lambda: self.attack(tower), round(tower_attack_time / tower.speed))
+        timer = Timer(
+            lambda: self.attack(tower),
+            round(tower_attack_time / tower.speed))
         timer.start_timer()
         self.attack_timers[Point(tower.row, tower.col)] = timer
+
+    def spawn_ally(self, tower, ally):
+        unit = self.game.place_ally(tower, ally, creeps.Footman)
+        self.creeps[unit] = self.get_unit(
+            ally.row, ally.col, creeps.Footman)
+        self.move_creep(unit)
 
     def add_attack(self, tower, enemy):
         if tower.name != 'CanonTower':
@@ -667,7 +690,9 @@ class Graphics(QtOpenGL.QGLWidget):
             priority)
         fire.set_texture(Image.open(consts.FIRE_PATH))
         self.magic[point] = fire
-        magic_delete = Timer(lambda: self.magic.pop(point, None), consts.FIRE_DURATION)
+        magic_delete = Timer(
+            lambda: self.magic.pop(point, None),
+            consts.FIRE_DURATION)
         magic_delete.launch_once()
         self.magic_deletions.append(magic_delete)
 
@@ -686,10 +711,14 @@ class Graphics(QtOpenGL.QGLWidget):
             priority)
         wind.set_texture(Image.open(consts.WIND_PATH))
         self.magic[point] = wind
-        magic_delete = Timer(lambda: self.magic.pop(point, None), consts.ICE_DURATION)
+        magic_delete = Timer(
+            lambda: self.magic.pop(point, None),
+            consts.ICE_DURATION)
         magic_delete.launch_once()
         self.magic_deletions.append(magic_delete)
-        debuff_delete = Timer(lambda: self.game.disable_ice_debuff(), consts.ICE_DURATION)
+        debuff_delete = Timer(
+            lambda: self.game.disable_ice_debuff(),
+            consts.ICE_DURATION)
         debuff_delete.launch_once()
         self.magic_deletions.append(debuff_delete)
 

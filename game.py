@@ -4,7 +4,7 @@ import consts
 import unit
 import random
 
-Map = collections.namedtuple('Map', 'row, col, type')
+Map = collections.namedtuple('Map', 'row, col, name')
 Point = collections.namedtuple('Point', 'row, col')
 
 
@@ -16,14 +16,17 @@ class Game:
         self.end = False
         self.gold = consts.START_GOLD
         self.enemies_left = consts.ENEMIES_ALLOWED
-        self.path = game_field.Path(self.portal, self.castle, self.field).path
         self.enemies = []
+        self.allies = []
         self.debuffed_enemies = {}
+        self.paths = game_field.Path(self.portal, self.castle, self.field).paths
 
     @staticmethod
     def get_field():
-        field = [[Map(0, 0, game_field.CellType.Grass)] * 40 for f in range(21)]
-        string_field = consts.DEFAULT_MAP
+        string_field = random.choice(consts.LEVELS)
+        width = len(string_field)
+        height = len(string_field[0])
+        field = [[Map(0, 0, game_field.CellType.Grass)] * height for f in range(width)]
         types = {'G': game_field.CellType.Grass,
                  ' ': game_field.CellType.Path,
                  'P': game_field.CellType.Portal,
@@ -34,7 +37,7 @@ class Game:
         return field
 
     def place_unit(self, row, col, unit_type):
-        unit_to_place = unit_type(row, col)
+        unit_to_place = unit_type(row, col, self)
         if unit_to_place.unit_type == unit.UnitType.Tower:
             price = consts.UNITS['towers'][unit_type.__name__].price
             if self.gold < price:
@@ -45,6 +48,12 @@ class Game:
         else:
             self.enemies.append(unit_to_place)
             return unit_to_place
+
+    def place_ally(self, tower, ally, unit_type):
+        unit_to_place = unit_type(ally.row, ally.col, self)
+        self.allies.append(unit_to_place)
+        tower.creeps.append(unit_to_place)
+        return unit_to_place
 
     def get_gold_number(self):
         return self.gold
